@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Controller.Net;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Globalization;
@@ -124,7 +125,8 @@ namespace Emby.SubtitleManager.Api
         public bool IsExternal { get; set; }
     }
 
-    public class SubtitleController : IService
+    [Authenticated]
+    public class SubtitleController : IService, IRequiresRequest
     {
         private const long MaxSubtitleFileSizeBytes = 20 * 1024 * 1024;
         private static readonly TimeSpan ExtrasCacheLifetime = TimeSpan.FromMinutes(30);
@@ -142,23 +144,40 @@ namespace Emby.SubtitleManager.Api
         private readonly IFileSystem _fileSystem;
         private readonly ILogger _logger;
         private readonly ILocalizationManager _localizationManager;
+        private readonly IAuthorizationContext _authorizationContext;
+        private readonly IUserManager _userManager;
+
+        public IRequest Request { get; set; }
 
         public SubtitleController(
             ILibraryManager libraryManager,
             IFileSystem fileSystem,
             ILogManager logManager,
-            ILocalizationManager localizationManager)
+            ILocalizationManager localizationManager,
+            IAuthorizationContext authorizationContext,
+            IUserManager userManager)
         {
             _libraryManager = libraryManager;
             _fileSystem = fileSystem;
             _logger = logManager.GetLogger("SubtitleManager");
             _localizationManager = localizationManager;
+            _authorizationContext = authorizationContext;
+            _userManager = userManager;
         }
 
         public async Task<object> Post(UploadSubtitleRequest request)
         {
             try
             {
+                if (!IsAdministratorRequest())
+                {
+                    return new UploadSubtitleResponse
+                    {
+                        Success = false,
+                        Message = "需要管理员权限"
+                    };
+                }
+
                 var validationError = ValidateUploadRequest(request, out var language, out var format);
                 if (!string.IsNullOrEmpty(validationError))
                 {
@@ -289,6 +308,15 @@ namespace Emby.SubtitleManager.Api
         {
             try
             {
+                if (!IsAdministratorRequest())
+                {
+                    return new DeleteSubtitleResponse
+                    {
+                        Success = false,
+                        Message = "需要管理员权限"
+                    };
+                }
+
                 if (string.IsNullOrWhiteSpace(request.SubtitlePath))
                 {
                     return new DeleteSubtitleResponse
@@ -374,6 +402,14 @@ namespace Emby.SubtitleManager.Api
         {
             try
             {
+                if (!IsAdministratorRequest())
+                {
+                    return new LibrariesResponse
+                    {
+                        Libraries = new LibraryInfo[0]
+                    };
+                }
+
                 var children = _libraryManager.RootFolder.GetRecursiveChildren();
                 var libraries = children
                     .OfType<CollectionFolder>()
@@ -408,6 +444,15 @@ namespace Emby.SubtitleManager.Api
         {
             try
             {
+                if (!IsAdministratorRequest())
+                {
+                    return new ItemsResponse
+                    {
+                        Items = new MediaItemInfo[0],
+                        TotalRecordCount = 0
+                    };
+                }
+
                 // 检查是否在查询虚拟的 extras 文件夹
                 if (!string.IsNullOrEmpty(request.ParentId))
                 {
@@ -752,6 +797,36 @@ namespace Emby.SubtitleManager.Api
             }
 
             return null;
+        }
+
+        private bool IsAdministratorRequest()
+        {
+            try
+            {
+                if (Request == null)
+                {
+                    return false;
+                }
+
+                var auth = _authorizationContext.GetAuthorizationInfo(Request);
+                if (auth == null || auth.UserId == 0)
+                {
+                    return false;
+                }
+
+                var user = _userManager.GetUserById(auth.UserId.ToString());
+                if (user == null)
+                {
+                    return false;
+                }
+
+                var policy = _userManager.GetUserPolicy(user);
+                return policy != null && policy.IsAdministrator;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static async Task<long> SaveSubtitleStream(Stream source, string subtitlePath)
