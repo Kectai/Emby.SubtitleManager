@@ -1,0 +1,42 @@
+# Build output
+bin/
+obj/
+artifacts/
+TestResults/
+coverage/
+*.dll
+*.pdb
+*.deps.json
+*.cache
+*.coverage
+*.coveragexml
+
+# User and IDE files
+.DS_Store
+Thumbs.db
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/
+.idea/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+
+# Local-only development notes
+local-notes/
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+
+# OS metadata that may appear in nested folders
+**/.DS_Store
