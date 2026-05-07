@@ -145,6 +145,7 @@ Example.Movie.zh.forced.srt
 ├── scripts/                    # 本地维护脚本
 ├── CHANGELOG.md                # 版本历史
 ├── Emby.SubtitleManager.csproj # .NET 项目文件
+├── LICENSE                     # MIT 许可证
 ├── Plugin.cs                   # 插件入口和页面注册
 ├── README.md                   # 项目说明
 └── icon.png                    # 插件列表矩形缩略图
@@ -158,4 +159,4 @@ Example.Movie.zh.forced.srt
 
 ## 许可证
 
-本项目仅供学习和个人使用。若要公开分发，建议在发布前补充明确的开源许可证。
+本项目采用 MIT License。除非另有说明，仓库中的代码、文档和图标资源均按该许可证发布。
