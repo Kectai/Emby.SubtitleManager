@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Net;
@@ -303,6 +304,7 @@ namespace Emby.SubtitleManager.Api
         private readonly ILocalizationManager _localizationManager;
         private readonly IAuthorizationContext _authorizationContext;
         private readonly IUserManager _userManager;
+        private readonly IServerConfigurationManager _serverConfigurationManager;
 
         public IRequest Request { get; set; }
 
@@ -312,7 +314,8 @@ namespace Emby.SubtitleManager.Api
             ILogManager logManager,
             ILocalizationManager localizationManager,
             IAuthorizationContext authorizationContext,
-            IUserManager userManager)
+            IUserManager userManager,
+            IServerConfigurationManager serverConfigurationManager)
         {
             _libraryManager = libraryManager;
             _fileSystem = fileSystem;
@@ -320,6 +323,7 @@ namespace Emby.SubtitleManager.Api
             _localizationManager = localizationManager;
             _authorizationContext = authorizationContext;
             _userManager = userManager;
+            _serverConfigurationManager = serverConfigurationManager;
         }
 
         public async Task<object> Post(UploadSubtitleRequest request)
@@ -940,7 +944,8 @@ namespace Emby.SubtitleManager.Api
 
         private string GetRawCulture()
         {
-            return GetPropertyValue(_localizationManager, "UICulture");
+            return _serverConfigurationManager?.Configuration?.UICulture ??
+                GetPropertyValue(_localizationManager, "UICulture");
         }
 
         private static string GetPropertyValue(object source, string propertyName)
