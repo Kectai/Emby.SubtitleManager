@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- 添加英文版项目说明 `README.en.md`，并在中文 README 中补充语言入口。
+- 将 GitHub Actions 构建流程改为仅支持手动触发，避免每次 push 自动构建。
+
 ## v1.3.2 - 2026-05-08
 
 - 精简公开文档，将安装、编译、使用、API 和项目结构说明合并到根目录 README。
