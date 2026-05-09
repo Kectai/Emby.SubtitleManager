@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- 添加插件页面多语言适配，跟随 Emby 首选显示语言显示简体中文、繁体中文、繁体中文（香港）、English (United Kingdom)、English (United States)、日本語和한국어，其他语言回退为 English (United States)。
+- 上传和删除接口返回信息同步适配上述语言。
 - 添加英文版项目说明 `README.en.md`，并在中文 README 中补充语言入口。
 - 将 GitHub Actions 构建流程改为仅支持手动触发，避免每次 push 自动构建。
 

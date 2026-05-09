@@ -24,6 +24,7 @@ The code, documentation, icon, and project organization for this repository were
 - Subtitle upload: upload external subtitle files for selected videos, with language and forced subtitle options.
 - Subtitle deletion: delete external subtitle files recognized by the selected video.
 - Metadata refresh: refresh Emby media metadata after subtitle uploads or deletions.
+- UI localization: plugin page text and API messages follow Emby's preferred display language. Supported languages are Chinese Simplified, Chinese Traditional, Chinese Traditional (Hong Kong), English (United Kingdom), English (United States), Japanese, and Korean; unsupported languages fall back to English (United States).
 
 ## Plugin Display
 
@@ -135,6 +136,7 @@ These endpoints are intended for the plugin frontend:
 
 - `GET /SubtitleManager/Libraries`: returns media libraries.
 - `GET /SubtitleManager/Items`: returns media items. Subtitle streams are omitted by default; use `IncludeSubtitles=true` to request subtitle information.
+- `GET /SubtitleManager/Localization`: returns the language used by the plugin page.
 - `POST /SubtitleManager/Upload`: uploads a subtitle file. Parameters include `ItemId`, `Language`, `Format`, `IsForced`, and the subtitle file stream.
 - `POST /SubtitleManager/DeleteSubtitle`: deletes an external subtitle from the selected media item's metadata directory. Parameters include `ItemId` and `SubtitlePath`.
 

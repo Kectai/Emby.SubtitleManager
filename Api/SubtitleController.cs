@@ -125,6 +125,16 @@ namespace Emby.SubtitleManager.Api
         public bool IsExternal { get; set; }
     }
 
+    [Route("/SubtitleManager/Localization", "GET", Summary = "获取插件界面语言")]
+    public class GetLocalizationRequest : IReturn<LocalizationResponse>
+    {
+    }
+
+    public class LocalizationResponse
+    {
+        public string Culture { get; set; }
+    }
+
     [Authenticated]
     public class SubtitleController : IService, IRequiresRequest
     {
@@ -138,6 +148,153 @@ namespace Emby.SubtitleManager.Api
             "ssa",
             "vtt",
             "sub"
+        };
+        private static readonly Dictionary<string, Dictionary<string, string>> ServerMessages = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            {
+                "en-US",
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    { "adminRequired", "Administrator access is required" },
+                    { "subtitleFileRequired", "Subtitle file is required" },
+                    { "subtitleFileEmpty", "Subtitle file is empty" },
+                    { "subtitleFileTooLarge", "Subtitle file exceeds the 20 MB limit" },
+                    { "invalidLanguageCode", "Invalid subtitle language code" },
+                    { "invalidSubtitleFormat", "Invalid subtitle format. Supported formats: srt, ass, ssa, vtt, sub" },
+                    { "itemNotFound", "The specified media item was not found" },
+                    { "itemNotVideo", "The specified media item is not a video" },
+                    { "metadataPathMissing", "Unable to get the media metadata directory" },
+                    { "invalidSubtitleSavePath", "Invalid subtitle save path" },
+                    { "duplicateSubtitle", "A subtitle with the same name already exists. Delete the existing subtitle before uploading a replacement." },
+                    { "uploadSuccess", "Subtitle uploaded successfully" },
+                    { "uploadFailed", "Upload failed: {0}" },
+                    { "subtitlePathRequired", "Subtitle path is required" },
+                    { "deleteExternalOnly", "Only external subtitles detected for this media item in its Emby metadata directory can be deleted" },
+                    { "subtitleFileMissing", "Subtitle file does not exist" },
+                    { "deleteSuccess", "Subtitle deleted successfully" },
+                    { "deleteFailed", "Delete failed: {0}" }
+                }
+            },
+            {
+                "zh-CN",
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    { "adminRequired", "需要管理员权限" },
+                    { "subtitleFileRequired", "字幕文件不能为空" },
+                    { "subtitleFileEmpty", "字幕文件为空" },
+                    { "subtitleFileTooLarge", "字幕文件超过 20MB 限制" },
+                    { "invalidLanguageCode", "字幕语言代码无效" },
+                    { "invalidSubtitleFormat", "字幕格式无效，仅支持 srt、ass、ssa、vtt、sub" },
+                    { "itemNotFound", "找不到指定的媒体项" },
+                    { "itemNotVideo", "指定的媒体项不是视频类型" },
+                    { "metadataPathMissing", "无法获取媒体元数据目录" },
+                    { "invalidSubtitleSavePath", "字幕保存路径无效" },
+                    { "duplicateSubtitle", "同名字幕已存在，请先删除现有字幕后再上传" },
+                    { "uploadSuccess", "字幕上传成功" },
+                    { "uploadFailed", "上传失败: {0}" },
+                    { "subtitlePathRequired", "字幕路径不能为空" },
+                    { "deleteExternalOnly", "只能删除当前媒体元数据目录中的外部字幕" },
+                    { "subtitleFileMissing", "字幕文件不存在" },
+                    { "deleteSuccess", "字幕删除成功" },
+                    { "deleteFailed", "删除失败: {0}" }
+                }
+            },
+            {
+                "zh-TW",
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    { "adminRequired", "需要管理員權限" },
+                    { "subtitleFileRequired", "字幕檔案不能為空" },
+                    { "subtitleFileEmpty", "字幕檔案為空" },
+                    { "subtitleFileTooLarge", "字幕檔案超過 20MB 限制" },
+                    { "invalidLanguageCode", "字幕語言代碼無效" },
+                    { "invalidSubtitleFormat", "字幕格式無效，僅支援 srt、ass、ssa、vtt、sub" },
+                    { "itemNotFound", "找不到指定的媒體項目" },
+                    { "itemNotVideo", "指定的媒體項目不是影片類型" },
+                    { "metadataPathMissing", "無法取得媒體中繼資料目錄" },
+                    { "invalidSubtitleSavePath", "字幕儲存路徑無效" },
+                    { "duplicateSubtitle", "同名字幕已存在，請先刪除現有字幕後再上傳" },
+                    { "uploadSuccess", "字幕上傳成功" },
+                    { "uploadFailed", "上傳失敗: {0}" },
+                    { "subtitlePathRequired", "字幕路徑不能為空" },
+                    { "deleteExternalOnly", "只能刪除目前媒體中繼資料目錄中的外部字幕" },
+                    { "subtitleFileMissing", "字幕檔案不存在" },
+                    { "deleteSuccess", "字幕刪除成功" },
+                    { "deleteFailed", "刪除失敗: {0}" }
+                }
+            },
+            {
+                "zh-HK",
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    { "adminRequired", "需要管理員權限" },
+                    { "subtitleFileRequired", "字幕檔案不能為空" },
+                    { "subtitleFileEmpty", "字幕檔案為空" },
+                    { "subtitleFileTooLarge", "字幕檔案超過 20MB 限制" },
+                    { "invalidLanguageCode", "字幕語言代碼無效" },
+                    { "invalidSubtitleFormat", "字幕格式無效，只支援 srt、ass、ssa、vtt、sub" },
+                    { "itemNotFound", "找不到指定的媒體項目" },
+                    { "itemNotVideo", "指定的媒體項目不是影片類型" },
+                    { "metadataPathMissing", "無法取得媒體元數據目錄" },
+                    { "invalidSubtitleSavePath", "字幕儲存路徑無效" },
+                    { "duplicateSubtitle", "同名字幕已存在，請先刪除現有字幕後再上載" },
+                    { "uploadSuccess", "字幕上載成功" },
+                    { "uploadFailed", "上載失敗: {0}" },
+                    { "subtitlePathRequired", "字幕路徑不能為空" },
+                    { "deleteExternalOnly", "只能刪除目前媒體元數據目錄中的外部字幕" },
+                    { "subtitleFileMissing", "字幕檔案不存在" },
+                    { "deleteSuccess", "字幕刪除成功" },
+                    { "deleteFailed", "刪除失敗: {0}" }
+                }
+            },
+            {
+                "ja",
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    { "adminRequired", "管理者権限が必要です" },
+                    { "subtitleFileRequired", "字幕ファイルが必要です" },
+                    { "subtitleFileEmpty", "字幕ファイルが空です" },
+                    { "subtitleFileTooLarge", "字幕ファイルが 20 MB の制限を超えています" },
+                    { "invalidLanguageCode", "字幕言語コードが無効です" },
+                    { "invalidSubtitleFormat", "字幕形式が無効です。対応形式: srt、ass、ssa、vtt、sub" },
+                    { "itemNotFound", "指定されたメディア項目が見つかりません" },
+                    { "itemNotVideo", "指定されたメディア項目は動画ではありません" },
+                    { "metadataPathMissing", "メディアのメタデータディレクトリを取得できません" },
+                    { "invalidSubtitleSavePath", "字幕の保存先パスが無効です" },
+                    { "duplicateSubtitle", "同じ名前の字幕が既に存在します。置き換える前に既存の字幕を削除してください。" },
+                    { "uploadSuccess", "字幕をアップロードしました" },
+                    { "uploadFailed", "アップロードに失敗しました: {0}" },
+                    { "subtitlePathRequired", "字幕パスが必要です" },
+                    { "deleteExternalOnly", "このメディア項目で検出された Emby メタデータディレクトリ内の外部字幕のみ削除できます" },
+                    { "subtitleFileMissing", "字幕ファイルが存在しません" },
+                    { "deleteSuccess", "字幕を削除しました" },
+                    { "deleteFailed", "削除に失敗しました: {0}" }
+                }
+            },
+            {
+                "ko",
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    { "adminRequired", "관리자 권한이 필요합니다" },
+                    { "subtitleFileRequired", "자막 파일이 필요합니다" },
+                    { "subtitleFileEmpty", "자막 파일이 비어 있습니다" },
+                    { "subtitleFileTooLarge", "자막 파일이 20 MB 제한을 초과했습니다" },
+                    { "invalidLanguageCode", "잘못된 자막 언어 코드입니다" },
+                    { "invalidSubtitleFormat", "잘못된 자막 형식입니다. 지원 형식: srt, ass, ssa, vtt, sub" },
+                    { "itemNotFound", "지정한 미디어 항목을 찾을 수 없습니다" },
+                    { "itemNotVideo", "지정한 미디어 항목은 비디오가 아닙니다" },
+                    { "metadataPathMissing", "미디어 메타데이터 디렉터리를 가져올 수 없습니다" },
+                    { "invalidSubtitleSavePath", "자막 저장 경로가 잘못되었습니다" },
+                    { "duplicateSubtitle", "같은 이름의 자막이 이미 있습니다. 교체하려면 기존 자막을 먼저 삭제하세요." },
+                    { "uploadSuccess", "자막이 업로드되었습니다" },
+                    { "uploadFailed", "업로드 실패: {0}" },
+                    { "subtitlePathRequired", "자막 경로가 필요합니다" },
+                    { "deleteExternalOnly", "이 미디어 항목에서 감지된 Emby 메타데이터 디렉터리의 외부 자막만 삭제할 수 있습니다" },
+                    { "subtitleFileMissing", "자막 파일이 없습니다" },
+                    { "deleteSuccess", "자막이 삭제되었습니다" },
+                    { "deleteFailed", "삭제 실패: {0}" }
+                }
+            }
         };
 
         private readonly ILibraryManager _libraryManager;
@@ -174,7 +331,7 @@ namespace Emby.SubtitleManager.Api
                     return new UploadSubtitleResponse
                     {
                         Success = false,
-                        Message = "需要管理员权限"
+                        Message = L("adminRequired")
                     };
                 }
 
@@ -184,7 +341,7 @@ namespace Emby.SubtitleManager.Api
                     return new UploadSubtitleResponse
                     {
                         Success = false,
-                        Message = validationError
+                        Message = L(validationError)
                     };
                 }
 
@@ -195,7 +352,7 @@ namespace Emby.SubtitleManager.Api
                     return new UploadSubtitleResponse
                     {
                         Success = false,
-                        Message = "找不到指定的媒体项"
+                        Message = L("itemNotFound")
                     };
                 }
 
@@ -205,7 +362,7 @@ namespace Emby.SubtitleManager.Api
                     return new UploadSubtitleResponse
                     {
                         Success = false,
-                        Message = "指定的媒体项不是视频类型"
+                        Message = L("itemNotVideo")
                     };
                 }
 
@@ -216,7 +373,7 @@ namespace Emby.SubtitleManager.Api
                     return new UploadSubtitleResponse
                     {
                         Success = false,
-                        Message = "无法获取媒体元数据目录"
+                        Message = L("metadataPathMissing")
                     };
                 }
 
@@ -240,7 +397,7 @@ namespace Emby.SubtitleManager.Api
                     return new UploadSubtitleResponse
                     {
                         Success = false,
-                        Message = "字幕保存路径无效"
+                        Message = L("invalidSubtitleSavePath")
                     };
                 }
 
@@ -249,7 +406,7 @@ namespace Emby.SubtitleManager.Api
                     return new UploadSubtitleResponse
                     {
                         Success = false,
-                        Message = "同名字幕已存在，请先删除现有字幕后再上传"
+                        Message = L("duplicateSubtitle")
                     };
                 }
 
@@ -271,7 +428,7 @@ namespace Emby.SubtitleManager.Api
                     return new UploadSubtitleResponse
                     {
                         Success = false,
-                        Message = "字幕文件为空"
+                        Message = L("subtitleFileEmpty")
                     };
                 }
 
@@ -289,7 +446,7 @@ namespace Emby.SubtitleManager.Api
                 return new UploadSubtitleResponse
                 {
                     Success = true,
-                    Message = "字幕上传成功",
+                    Message = L("uploadSuccess"),
                     FilePath = subtitlePath
                 };
             }
@@ -299,7 +456,7 @@ namespace Emby.SubtitleManager.Api
                 return new UploadSubtitleResponse
                 {
                     Success = false,
-                    Message = "上传失败: " + ex.Message
+                    Message = L("uploadFailed", LocalizeExceptionMessage(ex.Message))
                 };
             }
         }
@@ -313,7 +470,7 @@ namespace Emby.SubtitleManager.Api
                     return new DeleteSubtitleResponse
                     {
                         Success = false,
-                        Message = "需要管理员权限"
+                        Message = L("adminRequired")
                     };
                 }
 
@@ -322,7 +479,7 @@ namespace Emby.SubtitleManager.Api
                     return new DeleteSubtitleResponse
                     {
                         Success = false,
-                        Message = "字幕路径不能为空"
+                        Message = L("subtitlePathRequired")
                     };
                 }
 
@@ -333,7 +490,7 @@ namespace Emby.SubtitleManager.Api
                     return new DeleteSubtitleResponse
                     {
                         Success = false,
-                        Message = "找不到指定的媒体项"
+                        Message = L("itemNotFound")
                     };
                 }
 
@@ -343,7 +500,7 @@ namespace Emby.SubtitleManager.Api
                     return new DeleteSubtitleResponse
                     {
                         Success = false,
-                        Message = "指定的媒体项不是视频类型"
+                        Message = L("itemNotVideo")
                     };
                 }
 
@@ -353,7 +510,7 @@ namespace Emby.SubtitleManager.Api
                     return new DeleteSubtitleResponse
                     {
                         Success = false,
-                        Message = "只能删除当前媒体元数据目录中的外部字幕"
+                        Message = L("deleteExternalOnly")
                     };
                 }
 
@@ -363,7 +520,7 @@ namespace Emby.SubtitleManager.Api
                     return new DeleteSubtitleResponse
                     {
                         Success = false,
-                        Message = "字幕文件不存在"
+                        Message = L("subtitleFileMissing")
                     };
                 }
 
@@ -384,7 +541,7 @@ namespace Emby.SubtitleManager.Api
                 return new DeleteSubtitleResponse
                 {
                     Success = true,
-                    Message = "字幕删除成功"
+                    Message = L("deleteSuccess")
                 };
             }
             catch (Exception ex)
@@ -393,9 +550,27 @@ namespace Emby.SubtitleManager.Api
                 return new DeleteSubtitleResponse
                 {
                     Success = false,
-                    Message = "删除失败: " + ex.Message
+                    Message = L("deleteFailed", LocalizeExceptionMessage(ex.Message))
                 };
             }
+        }
+
+        public object Get(GetLocalizationRequest request)
+        {
+            if (!IsAdministratorRequest())
+            {
+                return new LocalizationResponse
+                {
+                    Culture = "en-US"
+                };
+            }
+
+            var rawCulture = GetRawCulture();
+
+            return new LocalizationResponse
+            {
+                Culture = NormalizeCulture(rawCulture)
+            };
         }
 
         public object Get(GetLibrariesRequest request)
@@ -763,6 +938,104 @@ namespace Emby.SubtitleManager.Api
                 .ToArray();
         }
 
+        private string GetRawCulture()
+        {
+            return GetPropertyValue(_localizationManager, "UICulture");
+        }
+
+        private static string GetPropertyValue(object source, string propertyName)
+        {
+            if (source == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                var sourceType = source.GetType();
+                var property = sourceType.GetProperty(propertyName) ??
+                    sourceType.GetInterfaces()
+                        .Select(i => i.GetProperty(propertyName))
+                        .FirstOrDefault(p => p != null);
+                var value = property == null ? null : property.GetValue(source, null);
+                return value == null ? null : value.ToString();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private string GetPluginCulture()
+        {
+            return NormalizeCulture(GetRawCulture());
+        }
+
+        private static string NormalizeCulture(string culture)
+        {
+            var normalized = (culture ?? string.Empty).Replace('_', '-').ToLowerInvariant();
+
+            if (normalized == "zh-cn" || normalized == "zh-sg" || normalized == "zh-hans" || normalized == "zh" ||
+                normalized.Contains("simplified"))
+            {
+                return "zh-CN";
+            }
+
+            if (normalized == "zh-hk" || normalized == "zh-hant-hk" || normalized.Contains("hong kong"))
+            {
+                return "zh-HK";
+            }
+
+            if (normalized == "zh-tw" || normalized == "zh-mo" || normalized == "zh-hant" ||
+                normalized.Contains("traditional"))
+            {
+                return "zh-TW";
+            }
+
+            if (normalized == "en-gb" || normalized == "en-uk" || normalized.Contains("united kingdom"))
+            {
+                return "en-GB";
+            }
+
+            if (normalized == "ja" || normalized == "ja-jp" || normalized.Contains("japanese"))
+            {
+                return "ja";
+            }
+
+            if (normalized == "ko" || normalized == "ko-kr" || normalized.Contains("korean"))
+            {
+                return "ko";
+            }
+
+            if (normalized == "en" || normalized == "en-us" || normalized.Contains("english"))
+            {
+                return "en-US";
+            }
+
+            return "en-US";
+        }
+
+        private string L(string key, params object[] args)
+        {
+            if (!ServerMessages.TryGetValue(GetPluginCulture(), out var cultureMessages) ||
+                !cultureMessages.TryGetValue(key, out var message))
+            {
+                message = ServerMessages["en-US"].TryGetValue(key, out var fallback) ? fallback : key;
+            }
+
+            return args == null || args.Length == 0 ? message : string.Format(message, args);
+        }
+
+        private static bool HasServerMessage(string key)
+        {
+            return !string.IsNullOrEmpty(key) && ServerMessages["en-US"].ContainsKey(key);
+        }
+
+        private string LocalizeExceptionMessage(string message)
+        {
+            return HasServerMessage(message) ? L(message) : message;
+        }
+
         private static string ValidateUploadRequest(UploadSubtitleRequest request, out string language, out string format)
         {
             language = request == null ? null : (request.Language ?? string.Empty).Trim();
@@ -770,30 +1043,30 @@ namespace Emby.SubtitleManager.Api
 
             if (request == null || request.RequestStream == null || !request.RequestStream.CanRead)
             {
-                return "字幕文件不能为空";
+                return "subtitleFileRequired";
             }
 
             if (request.RequestStream.CanSeek)
             {
                 if (request.RequestStream.Length == 0)
                 {
-                    return "字幕文件为空";
+                    return "subtitleFileEmpty";
                 }
 
                 if (request.RequestStream.Length > MaxSubtitleFileSizeBytes)
                 {
-                    return "字幕文件超过 20MB 限制";
+                    return "subtitleFileTooLarge";
                 }
             }
 
             if (string.IsNullOrEmpty(language) || !LanguageCodeRegex.IsMatch(language))
             {
-                return "字幕语言代码无效";
+                return "invalidLanguageCode";
             }
 
             if (string.IsNullOrEmpty(format) || !AllowedSubtitleFormats.Contains(format))
             {
-                return "字幕格式无效，仅支持 srt、ass、ssa、vtt、sub";
+                return "invalidSubtitleFormat";
             }
 
             return null;
@@ -842,7 +1115,7 @@ namespace Emby.SubtitleManager.Api
                     totalBytes += bytesRead;
                     if (totalBytes > MaxSubtitleFileSizeBytes)
                     {
-                        throw new InvalidOperationException("字幕文件超过 20MB 限制");
+                        throw new InvalidOperationException("subtitleFileTooLarge");
                     }
 
                     await fileStream.WriteAsync(buffer, 0, bytesRead).ConfigureAwait(false);
