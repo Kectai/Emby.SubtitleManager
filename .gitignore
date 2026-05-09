@@ -29,6 +29,14 @@ Thumbs.db
 *.bak
 *.orig
 *.rej
+*.pid
+*.swp
+*.swo
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
 
 # Local-only development notes
 local-notes/
