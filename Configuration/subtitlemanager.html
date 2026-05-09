@@ -4,14 +4,14 @@
             <form id="subtitleManagerForm" class="auto-center padded-top fieldsets">
 
                 <fieldset>
-                    <legend>选择媒体</legend>
+                    <legend data-i18n="chooseMedia">选择媒体</legend>
                     <div class="fieldset-fields">
                         <div class="selectContainer fieldset-field">
                             <label class="selectLabel">
-                                <div class="selectLabelText">媒体库</div>
+                                <div class="selectLabelText" data-i18n="mediaLibrary">媒体库</div>
                                 <div class="emby-select-wrapper emby-select-wrapper-smaller">
                                     <select is="emby-select" id="selectLibrary" class="emby-select">
-                                        <option value="">加载中...</option>
+                                        <option value="" data-i18n="loading">加载中...</option>
                                     </select>
                                     <div class="selectArrowContainer"><i class="selectArrow md-icon"></i></div>
                                 </div>
@@ -19,59 +19,59 @@
                         </div>
 
                         <div class="inputContainer fieldset-field">
-                            <label class="inputLabel" for="searchBox">搜索媒体</label>
-                            <input is="emby-input" type="text" id="searchBox" class="emby-input emby-input-smaller" placeholder="输入媒体名称进行搜索（可选）" />
-                            <div class="fieldDescription">可以搜索或直接加载完整树形列表</div>
+                            <label class="inputLabel" for="searchBox" data-i18n="searchMedia">搜索媒体</label>
+                            <input is="emby-input" type="text" id="searchBox" class="emby-input emby-input-smaller" placeholder="输入媒体名称进行搜索（可选）" data-i18n-placeholder="searchPlaceholder" />
+                            <div class="fieldDescription" data-i18n="searchDescription">可以搜索或直接加载完整树形列表</div>
                         </div>
 
                         <div class="fieldset-field">
                             <button is="emby-button" type="button" class="raised button-submit block emby-button" id="btnSearch">
-                                <span>加载媒体列表</span>
+                                <span data-i18n="loadMediaList">加载媒体列表</span>
                             </button>
                         </div>
                     </div>
                 </fieldset>
 
                 <fieldset>
-                    <legend>媒体项</legend>
+                    <legend data-i18n="mediaItems">媒体项</legend>
                     <div class="fieldset-fields">
                         <div class="fieldset-field">
                             <div id="mediaTree" style="max-height: 500px; overflow-y: auto; border: 1px solid #333; padding: 10px;">
-                                <div class="fieldDescription">请先选择媒体库并加载列表</div>
+                                <div class="fieldDescription" data-i18n="loadListFirst">请先选择媒体库并加载列表</div>
                             </div>
                         </div>
                     </div>
                 </fieldset>
 
                 <fieldset>
-                    <legend>当前字幕</legend>
+                    <legend data-i18n="currentSubtitles">当前字幕</legend>
                     <div class="fieldset-fields">
                         <div class="fieldset-field">
                             <div id="currentSubtitles">
-                                <div class="fieldDescription">请先选择媒体项以查看当前字幕</div>
+                                <div class="fieldDescription" data-i18n="selectMediaToViewSubtitles">请先选择媒体项以查看当前字幕</div>
                             </div>
                         </div>
                     </div>
                 </fieldset>
 
                 <fieldset>
-                    <legend>上传新字幕</legend>
+                    <legend data-i18n="uploadNewSubtitle">上传新字幕</legend>
                     <div class="fieldset-fields">
                         <div class="selectContainer fieldset-field">
                             <label class="selectLabel">
-                                <div class="selectLabelText">字幕语言</div>
+                                <div class="selectLabelText" data-i18n="subtitleLanguage">字幕语言</div>
                                 <div class="emby-select-wrapper emby-select-wrapper-smaller">
                                     <select is="emby-select" id="selectLanguage" class="emby-select">
-                                        <option value="zh">简体中文</option>
-                                        <option value="zh-CN">简体中文(中国)</option>
-                                        <option value="zh-TW">繁体中文(台湾)</option>
-                                        <option value="zh-HK">繁体中文(香港)</option>
-                                        <option value="en">英语</option>
-                                        <option value="ja">日语</option>
-                                        <option value="ko">韩语</option>
-                                        <option value="fr">法语</option>
-                                        <option value="de">德语</option>
-                                        <option value="es">西班牙语</option>
+                                        <option value="zh" data-i18n="langZh">简体中文</option>
+                                        <option value="zh-CN" data-i18n="langZhCn">简体中文(中国)</option>
+                                        <option value="zh-TW" data-i18n="langZhTw">繁体中文(台湾)</option>
+                                        <option value="zh-HK" data-i18n="langZhHk">繁体中文(香港)</option>
+                                        <option value="en" data-i18n="langEn">英语</option>
+                                        <option value="ja" data-i18n="langJa">日语</option>
+                                        <option value="ko" data-i18n="langKo">韩语</option>
+                                        <option value="fr" data-i18n="langFr">法语</option>
+                                        <option value="de" data-i18n="langDe">德语</option>
+                                        <option value="es" data-i18n="langEs">西班牙语</option>
                                     </select>
                                     <div class="selectArrowContainer"><i class="selectArrow md-icon"></i></div>
                                 </div>
@@ -80,7 +80,7 @@
 
                         <div class="selectContainer fieldset-field">
                             <label class="selectLabel">
-                                <div class="selectLabelText">字幕格式</div>
+                                <div class="selectLabelText" data-i18n="subtitleFormat">字幕格式</div>
                                 <div class="emby-select-wrapper emby-select-wrapper-smaller">
                                     <select is="emby-select" id="selectFormat" class="emby-select">
                                         <option value="srt">SRT (SubRip)</option>
@@ -97,29 +97,29 @@
                         <div class="toggleContainer fieldset-field">
                             <label class="emby-toggle-label">
                                 <input is="emby-toggle" type="checkbox" id="chkForced" class="emby-toggle" role="switch">
-                                <span>强制字幕</span>
+                                <span data-i18n="forcedSubtitle">强制字幕</span>
                                 <span class="toggleLabel flex-grow"></span>
                                 <div class="toggleSwitch"></div>
                             </label>
-                            <div class="fieldDescription toggleFieldDescription">用于仅在外语对话时显示的字幕</div>
+                            <div class="fieldDescription toggleFieldDescription" data-i18n="forcedDescription">用于仅在外语对话时显示的字幕</div>
                         </div>
 
                         <div class="inputContainer fieldset-field">
-                            <label class="inputLabel">字幕文件</label>
+                            <label class="inputLabel" data-i18n="subtitleFile">字幕文件</label>
                             <div style="display: flex; align-items: flex-start; gap: 10px;">
                                 <button is="emby-button" type="button" class="raised emby-button" id="btnSelectFile" style="flex-shrink: 0; white-space: nowrap;">
                                     <i class="md-icon" style="margin-right: 6px;">attach_file</i>
-                                    <span>选择文件</span>
+                                    <span data-i18n="selectFile">选择文件</span>
                                 </button>
-                                <span id="selectedFileName" style="flex: 1; min-width: 0; color: rgba(255,255,255,0.7); word-break: break-word;">未选择文件</span>
+                                <span id="selectedFileName" style="flex: 1; min-width: 0; color: rgba(255,255,255,0.7); word-break: break-word;" data-i18n="noFileSelected">未选择文件</span>
                                 <input type="file" id="subtitleFile" style="display: none;" accept=".srt,.ass,.ssa,.vtt,.sub" />
                             </div>
-                            <div class="fieldDescription">支持格式: SRT, ASS, SSA, VTT, SUB</div>
+                            <div class="fieldDescription" data-i18n="supportedFormats">支持格式: SRT, ASS, SSA, VTT, SUB</div>
                         </div>
 
                         <div class="fieldset-field">
                             <button is="emby-button" type="button" class="raised button-submit block emby-button" id="btnUpload">
-                                <span>上传字幕</span>
+                                <span data-i18n="uploadSubtitle">上传字幕</span>
                             </button>
                         </div>
                     </div>

@@ -6,17 +6,508 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
     var itemsCache = {}; // 缓存所有媒体项数据（key: itemId, value: item对象）
     var maxSubtitleFileSize = 20 * 1024 * 1024;
     var allowedSubtitleFormats = ['srt', 'ass', 'ssa', 'vtt', 'sub'];
+    var currentCulture = 'en-US';
+    var translations = {
+        'en-US': {
+            chooseMedia: 'Choose Media',
+            mediaLibrary: 'Media Library',
+            loading: 'Loading...',
+            searchMedia: 'Search Media',
+            searchPlaceholder: 'Enter a media name to search (optional)',
+            searchDescription: 'Search or load the full media tree',
+            loadMediaList: 'Load Media List',
+            mediaItems: 'Media Items',
+            loadListFirst: 'Select a media library and load the list first',
+            currentSubtitles: 'Current Subtitles',
+            selectMediaToViewSubtitles: 'Select a media item to view subtitles',
+            uploadNewSubtitle: 'Upload New Subtitle',
+            subtitleLanguage: 'Subtitle Language',
+            subtitleFormat: 'Subtitle Format',
+            forcedSubtitle: 'Forced Subtitle',
+            forcedDescription: 'For subtitles shown only during foreign-language dialogue',
+            subtitleFile: 'Subtitle File',
+            selectFile: 'Select File',
+            noFileSelected: 'No file selected',
+            supportedFormats: 'Supported formats: SRT, ASS, SSA, VTT, SUB',
+            uploadSubtitle: 'Upload Subtitle',
+            chooseLibraryOption: 'Select a media library',
+            noLibrariesFound: 'No media libraries found',
+            loadLibrariesFailed: 'Failed to load media libraries: {message}',
+            pleaseSelectLibrary: 'Please select a media library first',
+            emptyLibrary: 'No items found in this media library',
+            loadMediaFailed: 'Failed to load media: {message}',
+            searchMediaFailed: 'Failed to search media: {message}',
+            loadChildrenFailed: 'Failed to load child items: {message}',
+            noMatchingItems: 'No matching media items found',
+            loadingSubtitles: 'Loading subtitles...',
+            noSubtitles: 'This media item has no subtitles',
+            unknownLanguage: 'Unknown language',
+            forcedTag: 'Forced',
+            externalTag: 'External',
+            deleteSubtitle: 'Delete Subtitle',
+            deleteSubtitleConfirm: 'Are you sure you want to delete this subtitle?',
+            deleteSubtitleSuccess: 'Subtitle deleted successfully',
+            deleteSubtitleFailed: 'Failed to delete subtitle: {message}',
+            refreshSubtitlesFailed: 'Failed to refresh subtitle information',
+            selectMediaItem: 'Please select a media item',
+            selectSubtitleFile: 'Please select a subtitle file',
+            subtitleFileEmpty: 'Subtitle file is empty',
+            subtitleFileTooLarge: 'Subtitle file exceeds the 20 MB limit',
+            invalidSubtitleFormat: 'Invalid subtitle format',
+            extensionMismatch: 'Subtitle file extension does not match the selected format',
+            uploadSubtitleSuccess: 'Subtitle uploaded successfully',
+            uploadSubtitleFailed: 'Upload failed: {message}',
+            parseResponseFailed: 'Failed to parse response: {message}',
+            uploadNetworkError: 'Upload failed: network error',
+            unknownError: 'Unknown error',
+            successTitle: 'Success',
+            errorTitle: 'Error',
+            seasonNumber: 'Season {number}',
+            seasonWords: ['season'],
+            langZh: 'Chinese Simplified',
+            langZhCn: 'Chinese Simplified (China)',
+            langZhTw: 'Chinese Traditional (Taiwan)',
+            langZhHk: 'Chinese Traditional (Hong Kong)',
+            langEn: 'English',
+            langJa: 'Japanese',
+            langKo: 'Korean',
+            langFr: 'French',
+            langDe: 'German',
+            langEs: 'Spanish'
+        },
+        'zh-CN': {
+            chooseMedia: '选择媒体',
+            mediaLibrary: '媒体库',
+            loading: '加载中...',
+            searchMedia: '搜索媒体',
+            searchPlaceholder: '输入媒体名称进行搜索（可选）',
+            searchDescription: '可以搜索或直接加载完整树形列表',
+            loadMediaList: '加载媒体列表',
+            mediaItems: '媒体项',
+            loadListFirst: '请先选择媒体库并加载列表',
+            currentSubtitles: '当前字幕',
+            selectMediaToViewSubtitles: '请先选择媒体项以查看当前字幕',
+            uploadNewSubtitle: '上传新字幕',
+            subtitleLanguage: '字幕语言',
+            subtitleFormat: '字幕格式',
+            forcedSubtitle: '强制字幕',
+            forcedDescription: '用于仅在外语对话时显示的字幕',
+            subtitleFile: '字幕文件',
+            selectFile: '选择文件',
+            noFileSelected: '未选择文件',
+            supportedFormats: '支持格式: SRT, ASS, SSA, VTT, SUB',
+            uploadSubtitle: '上传字幕',
+            chooseLibraryOption: '请选择媒体库',
+            noLibrariesFound: '未找到媒体库',
+            loadLibrariesFailed: '加载媒体库失败: {message}',
+            pleaseSelectLibrary: '请先选择媒体库',
+            emptyLibrary: '此媒体库下没有项目',
+            loadMediaFailed: '加载媒体失败: {message}',
+            searchMediaFailed: '搜索媒体失败: {message}',
+            loadChildrenFailed: '加载子项失败: {message}',
+            noMatchingItems: '未找到匹配的媒体项',
+            loadingSubtitles: '正在加载字幕...',
+            noSubtitles: '该媒体项暂无字幕',
+            unknownLanguage: '未知语言',
+            forcedTag: '强制',
+            externalTag: '外部',
+            deleteSubtitle: '删除字幕',
+            deleteSubtitleConfirm: '确定要删除该字幕吗？',
+            deleteSubtitleSuccess: '字幕删除成功',
+            deleteSubtitleFailed: '删除字幕失败: {message}',
+            refreshSubtitlesFailed: '刷新字幕信息失败',
+            selectMediaItem: '请选择媒体项',
+            selectSubtitleFile: '请选择字幕文件',
+            subtitleFileEmpty: '字幕文件为空',
+            subtitleFileTooLarge: '字幕文件超过 20MB 限制',
+            invalidSubtitleFormat: '字幕格式无效',
+            extensionMismatch: '字幕文件扩展名与选择的格式不一致',
+            uploadSubtitleSuccess: '字幕上传成功',
+            uploadSubtitleFailed: '上传失败: {message}',
+            parseResponseFailed: '解析响应失败: {message}',
+            uploadNetworkError: '上传失败: 网络错误',
+            unknownError: '未知错误',
+            successTitle: '成功',
+            errorTitle: '错误',
+            seasonNumber: '第 {number} 季',
+            seasonWords: ['季', 'season'],
+            langZh: '简体中文',
+            langZhCn: '简体中文(中国)',
+            langZhTw: '繁体中文(台湾)',
+            langZhHk: '繁体中文(香港)',
+            langEn: '英语',
+            langJa: '日语',
+            langKo: '韩语',
+            langFr: '法语',
+            langDe: '德语',
+            langEs: '西班牙语'
+        },
+        'zh-TW': {
+            chooseMedia: '選擇媒體',
+            mediaLibrary: '媒體庫',
+            loading: '載入中...',
+            searchMedia: '搜尋媒體',
+            searchPlaceholder: '輸入媒體名稱進行搜尋（選填）',
+            searchDescription: '可以搜尋或直接載入完整樹狀清單',
+            loadMediaList: '載入媒體清單',
+            mediaItems: '媒體項目',
+            loadListFirst: '請先選擇媒體庫並載入清單',
+            currentSubtitles: '目前字幕',
+            selectMediaToViewSubtitles: '請先選擇媒體項目以查看目前字幕',
+            uploadNewSubtitle: '上傳新字幕',
+            subtitleLanguage: '字幕語言',
+            subtitleFormat: '字幕格式',
+            forcedSubtitle: '強制字幕',
+            forcedDescription: '用於僅在外語對話時顯示的字幕',
+            subtitleFile: '字幕檔案',
+            selectFile: '選擇檔案',
+            noFileSelected: '尚未選擇檔案',
+            supportedFormats: '支援格式: SRT, ASS, SSA, VTT, SUB',
+            uploadSubtitle: '上傳字幕',
+            chooseLibraryOption: '請選擇媒體庫',
+            noLibrariesFound: '找不到媒體庫',
+            loadLibrariesFailed: '載入媒體庫失敗: {message}',
+            pleaseSelectLibrary: '請先選擇媒體庫',
+            emptyLibrary: '此媒體庫下沒有項目',
+            loadMediaFailed: '載入媒體失敗: {message}',
+            searchMediaFailed: '搜尋媒體失敗: {message}',
+            loadChildrenFailed: '載入子項失敗: {message}',
+            noMatchingItems: '找不到符合的媒體項目',
+            loadingSubtitles: '正在載入字幕...',
+            noSubtitles: '此媒體項目沒有字幕',
+            unknownLanguage: '未知語言',
+            forcedTag: '強制',
+            externalTag: '外部',
+            deleteSubtitle: '刪除字幕',
+            deleteSubtitleConfirm: '確定要刪除此字幕嗎？',
+            deleteSubtitleSuccess: '字幕刪除成功',
+            deleteSubtitleFailed: '刪除字幕失敗: {message}',
+            refreshSubtitlesFailed: '重新整理字幕資訊失敗',
+            selectMediaItem: '請選擇媒體項目',
+            selectSubtitleFile: '請選擇字幕檔案',
+            subtitleFileEmpty: '字幕檔案為空',
+            subtitleFileTooLarge: '字幕檔案超過 20MB 限制',
+            invalidSubtitleFormat: '字幕格式無效',
+            extensionMismatch: '字幕檔案副檔名與選擇的格式不一致',
+            uploadSubtitleSuccess: '字幕上傳成功',
+            uploadSubtitleFailed: '上傳失敗: {message}',
+            parseResponseFailed: '解析回應失敗: {message}',
+            uploadNetworkError: '上傳失敗: 網路錯誤',
+            unknownError: '未知錯誤',
+            successTitle: '成功',
+            errorTitle: '錯誤',
+            seasonNumber: '第 {number} 季',
+            seasonWords: ['季', 'season'],
+            langZh: '簡體中文',
+            langZhCn: '簡體中文（中國）',
+            langZhTw: '繁體中文（台灣）',
+            langZhHk: '繁體中文（香港）',
+            langEn: '英文',
+            langJa: '日文',
+            langKo: '韓文',
+            langFr: '法文',
+            langDe: '德文',
+            langEs: '西班牙文'
+        },
+        'zh-HK': {
+            chooseMedia: '選擇媒體',
+            mediaLibrary: '媒體庫',
+            loading: '載入中...',
+            searchMedia: '搜尋媒體',
+            searchPlaceholder: '輸入媒體名稱搜尋（可選）',
+            searchDescription: '可以搜尋或直接載入完整樹狀清單',
+            loadMediaList: '載入媒體清單',
+            mediaItems: '媒體項目',
+            loadListFirst: '請先選擇媒體庫並載入清單',
+            currentSubtitles: '目前字幕',
+            selectMediaToViewSubtitles: '請先選擇媒體項目以查看目前字幕',
+            uploadNewSubtitle: '上載新字幕',
+            subtitleLanguage: '字幕語言',
+            subtitleFormat: '字幕格式',
+            forcedSubtitle: '強制字幕',
+            forcedDescription: '用於只在外語對話時顯示的字幕',
+            subtitleFile: '字幕檔案',
+            selectFile: '選擇檔案',
+            noFileSelected: '尚未選擇檔案',
+            supportedFormats: '支援格式: SRT, ASS, SSA, VTT, SUB',
+            uploadSubtitle: '上載字幕',
+            chooseLibraryOption: '請選擇媒體庫',
+            noLibrariesFound: '找不到媒體庫',
+            loadLibrariesFailed: '載入媒體庫失敗: {message}',
+            pleaseSelectLibrary: '請先選擇媒體庫',
+            emptyLibrary: '此媒體庫沒有項目',
+            loadMediaFailed: '載入媒體失敗: {message}',
+            searchMediaFailed: '搜尋媒體失敗: {message}',
+            loadChildrenFailed: '載入子項失敗: {message}',
+            noMatchingItems: '找不到符合的媒體項目',
+            loadingSubtitles: '正在載入字幕...',
+            noSubtitles: '此媒體項目沒有字幕',
+            unknownLanguage: '未知語言',
+            forcedTag: '強制',
+            externalTag: '外部',
+            deleteSubtitle: '刪除字幕',
+            deleteSubtitleConfirm: '確定要刪除此字幕嗎？',
+            deleteSubtitleSuccess: '字幕刪除成功',
+            deleteSubtitleFailed: '刪除字幕失敗: {message}',
+            refreshSubtitlesFailed: '重新整理字幕資訊失敗',
+            selectMediaItem: '請選擇媒體項目',
+            selectSubtitleFile: '請選擇字幕檔案',
+            subtitleFileEmpty: '字幕檔案為空',
+            subtitleFileTooLarge: '字幕檔案超過 20MB 限制',
+            invalidSubtitleFormat: '字幕格式無效',
+            extensionMismatch: '字幕檔案副檔名與所選格式不一致',
+            uploadSubtitleSuccess: '字幕上載成功',
+            uploadSubtitleFailed: '上載失敗: {message}',
+            parseResponseFailed: '解析回應失敗: {message}',
+            uploadNetworkError: '上載失敗: 網絡錯誤',
+            unknownError: '未知錯誤',
+            successTitle: '成功',
+            errorTitle: '錯誤',
+            seasonNumber: '第 {number} 季',
+            seasonWords: ['季', 'season'],
+            langZh: '簡體中文',
+            langZhCn: '簡體中文（中國）',
+            langZhTw: '繁體中文（台灣）',
+            langZhHk: '繁體中文（香港）',
+            langEn: '英文',
+            langJa: '日文',
+            langKo: '韓文',
+            langFr: '法文',
+            langDe: '德文',
+            langEs: '西班牙文'
+        },
+        'ja': {
+            chooseMedia: 'メディアを選択',
+            mediaLibrary: 'メディアライブラリ',
+            loading: '読み込み中...',
+            searchMedia: 'メディアを検索',
+            searchPlaceholder: '検索するメディア名を入力（任意）',
+            searchDescription: '検索するか、完全なツリー一覧を読み込みます',
+            loadMediaList: 'メディア一覧を読み込む',
+            mediaItems: 'メディア項目',
+            loadListFirst: '先にメディアライブラリを選択して一覧を読み込んでください',
+            currentSubtitles: '現在の字幕',
+            selectMediaToViewSubtitles: '字幕を表示するメディア項目を選択してください',
+            uploadNewSubtitle: '新しい字幕をアップロード',
+            subtitleLanguage: '字幕言語',
+            subtitleFormat: '字幕形式',
+            forcedSubtitle: '強制字幕',
+            forcedDescription: '外国語の会話時のみ表示する字幕に使用します',
+            subtitleFile: '字幕ファイル',
+            selectFile: 'ファイルを選択',
+            noFileSelected: 'ファイルが選択されていません',
+            supportedFormats: '対応形式: SRT, ASS, SSA, VTT, SUB',
+            uploadSubtitle: '字幕をアップロード',
+            chooseLibraryOption: 'メディアライブラリを選択',
+            noLibrariesFound: 'メディアライブラリが見つかりません',
+            loadLibrariesFailed: 'メディアライブラリの読み込みに失敗しました: {message}',
+            pleaseSelectLibrary: '先にメディアライブラリを選択してください',
+            emptyLibrary: 'このメディアライブラリには項目がありません',
+            loadMediaFailed: 'メディアの読み込みに失敗しました: {message}',
+            searchMediaFailed: 'メディアの検索に失敗しました: {message}',
+            loadChildrenFailed: '子項目の読み込みに失敗しました: {message}',
+            noMatchingItems: '一致するメディア項目が見つかりません',
+            loadingSubtitles: '字幕を読み込み中...',
+            noSubtitles: 'このメディア項目には字幕がありません',
+            unknownLanguage: '不明な言語',
+            forcedTag: '強制',
+            externalTag: '外部',
+            deleteSubtitle: '字幕を削除',
+            deleteSubtitleConfirm: 'この字幕を削除しますか？',
+            deleteSubtitleSuccess: '字幕を削除しました',
+            deleteSubtitleFailed: '字幕の削除に失敗しました: {message}',
+            refreshSubtitlesFailed: '字幕情報の更新に失敗しました',
+            selectMediaItem: 'メディア項目を選択してください',
+            selectSubtitleFile: '字幕ファイルを選択してください',
+            subtitleFileEmpty: '字幕ファイルが空です',
+            subtitleFileTooLarge: '字幕ファイルが 20 MB の制限を超えています',
+            invalidSubtitleFormat: '字幕形式が無効です',
+            extensionMismatch: '字幕ファイルの拡張子が選択した形式と一致しません',
+            uploadSubtitleSuccess: '字幕をアップロードしました',
+            uploadSubtitleFailed: 'アップロードに失敗しました: {message}',
+            parseResponseFailed: 'レスポンスの解析に失敗しました: {message}',
+            uploadNetworkError: 'アップロードに失敗しました: ネットワークエラー',
+            unknownError: '不明なエラー',
+            successTitle: '成功',
+            errorTitle: 'エラー',
+            seasonNumber: 'シーズン {number}',
+            seasonWords: ['シーズン', 'season'],
+            langZh: '簡体字中国語',
+            langZhCn: '簡体字中国語（中国）',
+            langZhTw: '繁体字中国語（台湾）',
+            langZhHk: '繁体字中国語（香港）',
+            langEn: '英語',
+            langJa: '日本語',
+            langKo: '韓国語',
+            langFr: 'フランス語',
+            langDe: 'ドイツ語',
+            langEs: 'スペイン語'
+        },
+        'ko': {
+            chooseMedia: '미디어 선택',
+            mediaLibrary: '미디어 라이브러리',
+            loading: '불러오는 중...',
+            searchMedia: '미디어 검색',
+            searchPlaceholder: '검색할 미디어 이름 입력(선택 사항)',
+            searchDescription: '검색하거나 전체 트리 목록을 불러올 수 있습니다',
+            loadMediaList: '미디어 목록 불러오기',
+            mediaItems: '미디어 항목',
+            loadListFirst: '먼저 미디어 라이브러리를 선택하고 목록을 불러오세요',
+            currentSubtitles: '현재 자막',
+            selectMediaToViewSubtitles: '현재 자막을 보려면 미디어 항목을 선택하세요',
+            uploadNewSubtitle: '새 자막 업로드',
+            subtitleLanguage: '자막 언어',
+            subtitleFormat: '자막 형식',
+            forcedSubtitle: '강제 자막',
+            forcedDescription: '외국어 대화에서만 표시되는 자막에 사용합니다',
+            subtitleFile: '자막 파일',
+            selectFile: '파일 선택',
+            noFileSelected: '선택된 파일 없음',
+            supportedFormats: '지원 형식: SRT, ASS, SSA, VTT, SUB',
+            uploadSubtitle: '자막 업로드',
+            chooseLibraryOption: '미디어 라이브러리 선택',
+            noLibrariesFound: '미디어 라이브러리를 찾을 수 없습니다',
+            loadLibrariesFailed: '미디어 라이브러리를 불러오지 못했습니다: {message}',
+            pleaseSelectLibrary: '먼저 미디어 라이브러리를 선택하세요',
+            emptyLibrary: '이 미디어 라이브러리에 항목이 없습니다',
+            loadMediaFailed: '미디어를 불러오지 못했습니다: {message}',
+            searchMediaFailed: '미디어 검색에 실패했습니다: {message}',
+            loadChildrenFailed: '하위 항목을 불러오지 못했습니다: {message}',
+            noMatchingItems: '일치하는 미디어 항목이 없습니다',
+            loadingSubtitles: '자막을 불러오는 중...',
+            noSubtitles: '이 미디어 항목에는 자막이 없습니다',
+            unknownLanguage: '알 수 없는 언어',
+            forcedTag: '강제',
+            externalTag: '외부',
+            deleteSubtitle: '자막 삭제',
+            deleteSubtitleConfirm: '이 자막을 삭제하시겠습니까?',
+            deleteSubtitleSuccess: '자막이 삭제되었습니다',
+            deleteSubtitleFailed: '자막 삭제 실패: {message}',
+            refreshSubtitlesFailed: '자막 정보를 새로 고치지 못했습니다',
+            selectMediaItem: '미디어 항목을 선택하세요',
+            selectSubtitleFile: '자막 파일을 선택하세요',
+            subtitleFileEmpty: '자막 파일이 비어 있습니다',
+            subtitleFileTooLarge: '자막 파일이 20 MB 제한을 초과했습니다',
+            invalidSubtitleFormat: '잘못된 자막 형식입니다',
+            extensionMismatch: '자막 파일 확장자가 선택한 형식과 일치하지 않습니다',
+            uploadSubtitleSuccess: '자막이 업로드되었습니다',
+            uploadSubtitleFailed: '업로드 실패: {message}',
+            parseResponseFailed: '응답을 해석하지 못했습니다: {message}',
+            uploadNetworkError: '업로드 실패: 네트워크 오류',
+            unknownError: '알 수 없는 오류',
+            successTitle: '성공',
+            errorTitle: '오류',
+            seasonNumber: '시즌 {number}',
+            seasonWords: ['시즌', 'season'],
+            langZh: '중국어 간체',
+            langZhCn: '중국어 간체(중국)',
+            langZhTw: '중국어 번체(대만)',
+            langZhHk: '중국어 번체(홍콩)',
+            langEn: '영어',
+            langJa: '일본어',
+            langKo: '한국어',
+            langFr: '프랑스어',
+            langDe: '독일어',
+            langEs: '스페인어'
+        }
+    };
+    translations['en-GB'] = translations['en-US'];
 
     // 获取API客户端
     function getApiClient() {
         return ApiClient;
     }
 
+    function normalizeCulture(culture) {
+        var normalized = (culture || '').toString().replace('_', '-').toLowerCase();
+
+        if (normalized === 'zh-cn' || normalized === 'zh-sg' || normalized === 'zh-hans' || normalized === 'zh' ||
+                normalized.indexOf('simplified') !== -1) {
+            return 'zh-CN';
+        }
+
+        if (normalized === 'zh-hk' || normalized === 'zh-hant-hk' || normalized.indexOf('hong kong') !== -1) {
+            return 'zh-HK';
+        }
+
+        if (normalized === 'zh-tw' || normalized === 'zh-mo' || normalized === 'zh-hant' ||
+                normalized.indexOf('traditional') !== -1) {
+            return 'zh-TW';
+        }
+
+        if (normalized === 'en-gb' || normalized === 'en-uk' || normalized.indexOf('united kingdom') !== -1) {
+            return 'en-GB';
+        }
+
+        if (normalized === 'ja' || normalized === 'ja-jp' || normalized.indexOf('japanese') !== -1) {
+            return 'ja';
+        }
+
+        if (normalized === 'ko' || normalized === 'ko-kr' || normalized.indexOf('korean') !== -1) {
+            return 'ko';
+        }
+
+        if (normalized === 'en' || normalized === 'en-us' || normalized.indexOf('english') !== -1) {
+            return 'en-US';
+        }
+
+        return 'en-US';
+    }
+
+    function getStrings() {
+        return translations[currentCulture] || translations['en-US'];
+    }
+
+    function t(key, values) {
+        var strings = getStrings();
+        var value = strings[key] || translations['en-US'][key] || key;
+
+        if (values) {
+            Object.keys(values).forEach(function (name) {
+                value = value.replace(new RegExp('\\{' + name + '\\}', 'g'), values[name]);
+            });
+        }
+
+        return value;
+    }
+
+    function setFieldDescription(container, key) {
+        container.innerHTML = '';
+        var message = document.createElement('div');
+        message.className = 'fieldDescription';
+        message.textContent = t(key);
+        container.appendChild(message);
+    }
+
+    function applyTranslations(view) {
+        view.querySelectorAll('[data-i18n]').forEach(function (element) {
+            element.textContent = t(element.getAttribute('data-i18n'));
+        });
+
+        view.querySelectorAll('[data-i18n-placeholder]').forEach(function (element) {
+            element.setAttribute('placeholder', t(element.getAttribute('data-i18n-placeholder')));
+        });
+    }
+
+    function initLocalization(view) {
+        var apiClient = getApiClient();
+        var url = apiClient.getUrl('/SubtitleManager/Localization');
+
+        return apiClient.getJSON(url).then(function (result) {
+            currentCulture = normalizeCulture(result && result.Culture);
+            applyTranslations(view);
+        }).catch(function (error) {
+            currentCulture = 'en-US';
+            applyTranslations(view);
+            console.error('Failed to load plugin localization:', error);
+        });
+    }
+
     // 显示消息
     function showMessage(message, isError) {
         Dashboard.alert({
             message: message,
-            title: isError ? '错误' : '成功'
+            title: isError ? t('errorTitle') : t('successTitle')
         });
     }
 
@@ -28,7 +519,11 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
         apiClient.getJSON(apiClient.getUrl('/SubtitleManager/Libraries')).then(function (result) {
             loading.hide();
             var selectLibrary = view.querySelector('#selectLibrary');
-            selectLibrary.innerHTML = '<option value="">请选择媒体库</option>';
+            selectLibrary.innerHTML = '';
+            var placeholderOption = document.createElement('option');
+            placeholderOption.value = '';
+            placeholderOption.textContent = t('chooseLibraryOption');
+            selectLibrary.appendChild(placeholderOption);
 
             if (result.Libraries && result.Libraries.length > 0) {
                 result.Libraries.forEach(function (library) {
@@ -38,12 +533,16 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
                     selectLibrary.appendChild(option);
                 });
             } else {
-                selectLibrary.innerHTML = '<option value="">未找到媒体库</option>';
+                selectLibrary.innerHTML = '';
+                var emptyOption = document.createElement('option');
+                emptyOption.value = '';
+                emptyOption.textContent = t('noLibrariesFound');
+                selectLibrary.appendChild(emptyOption);
             }
         }).catch(function (error) {
             loading.hide();
             console.error('加载媒体库失败:', error);
-            showMessage('加载媒体库失败: ' + error.message, true);
+            showMessage(t('loadLibrariesFailed', { message: error.message }), true);
         });
     }
 
@@ -63,9 +562,14 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
         // Season: 如果名称已经包含季信息，直接显示；否则添加编号
         // 注意：只处理 IndexNumber > 0 的季，避免把特殊文件夹（如 shorts）显示为"第 0 季"
         if (item.Type === 'Season' && item.IndexNumber !== undefined && item.IndexNumber !== null && item.IndexNumber > 0) {
-            // 检查名称是否已经包含"季"或"Season"
-            if (name.indexOf('季') === -1 && name.toLowerCase().indexOf('season') === -1) {
-                return '第 ' + item.IndexNumber + ' 季';
+            var seasonWords = getStrings().seasonWords || translations['en-US'].seasonWords;
+            var lowerName = name.toLowerCase();
+            var hasSeasonWord = seasonWords.some(function (word) {
+                return lowerName.indexOf(word.toLowerCase()) !== -1;
+            });
+
+            if (!hasSeasonWord) {
+                return t('seasonNumber', { number: item.IndexNumber });
             }
             return name;
         }
@@ -138,7 +642,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
         var searchText = view.querySelector('#searchBox').value;
 
         if (!libraryId) {
-            showMessage('请先选择媒体库', true);
+            showMessage(t('pleaseSelectLibrary'), true);
             return;
         }
 
@@ -171,7 +675,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             treeContainer.innerHTML = '';
 
             if (items.length === 0) {
-                treeContainer.innerHTML = '<div class="fieldDescription">此媒体库下没有项目</div>';
+                setFieldDescription(treeContainer, 'emptyLibrary');
                 return;
             }
 
@@ -227,7 +731,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
         }).catch(function (error) {
             loading.hide();
             console.error('加载媒体失败:', error);
-            showMessage('加载媒体失败: ' + error.message, true);
+            showMessage(t('loadMediaFailed', { message: error.message }), true);
         });
     }
 
@@ -257,7 +761,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
         }).catch(function (error) {
             loading.hide();
             console.error('搜索媒体失败:', error);
-            showMessage('搜索媒体失败: ' + error.message, true);
+            showMessage(t('searchMediaFailed', { message: error.message }), true);
         });
     }
 
@@ -267,7 +771,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
         treeContainer.innerHTML = '';
 
         if (matchedItems.length === 0) {
-            treeContainer.innerHTML = '<div class="fieldDescription">未找到匹配的媒体项</div>';
+            setFieldDescription(treeContainer, 'noMatchingItems');
             return;
         }
 
@@ -340,7 +844,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
         }
 
         if (rootItems.length === 0) {
-            treeContainer.innerHTML = '<div class="fieldDescription">未找到匹配的媒体项</div>';
+            setFieldDescription(treeContainer, 'noMatchingItems');
             return;
         }
 
@@ -565,7 +1069,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
         }).catch(function (error) {
             loading.hide();
             console.error('加载子项失败:', error);
-            showMessage('加载子项失败: ' + error.message, true);
+            showMessage(t('loadChildrenFailed', { message: error.message }), true);
         });
     }
 
@@ -812,7 +1316,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
     // 显示当前字幕加载状态
     function showCurrentSubtitlesLoading(view) {
         var container = view.querySelector('#currentSubtitles');
-        container.innerHTML = '<div class="fieldDescription">正在加载字幕...</div>';
+        setFieldDescription(container, 'loadingSubtitles');
     }
 
     // 显示当前字幕
@@ -820,7 +1324,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
         var container = view.querySelector('#currentSubtitles');
 
         if (!item || !item.Subtitles || item.Subtitles.length === 0) {
-            container.innerHTML = '<div class="fieldDescription">该媒体项暂无字幕</div>';
+            setFieldDescription(container, 'noSubtitles');
             return;
         }
 
@@ -840,12 +1344,12 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
 
             var textDiv1 = document.createElement('div');
             textDiv1.className = 'listItemBodyText';
-            textDiv1.textContent = (index + 1) + '. ' + (sub.DisplayLanguage || sub.Language || '未知语言');
+            textDiv1.textContent = (index + 1) + '. ' + (sub.DisplayLanguage || sub.Language || t('unknownLanguage'));
             if (sub.IsForced) {
-                textDiv1.textContent += ' [强制]';
+                textDiv1.textContent += ' [' + t('forcedTag') + ']';
             }
             if (sub.IsExternal) {
-                textDiv1.textContent += ' [外部]';
+                textDiv1.textContent += ' [' + t('externalTag') + ']';
             }
             listItemBody.appendChild(textDiv1);
 
@@ -863,7 +1367,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
                 var deleteBtn = document.createElement('button');
                 deleteBtn.type = 'button';
                 deleteBtn.className = 'paper-icon-button-light';
-                deleteBtn.title = '删除字幕';
+                deleteBtn.title = t('deleteSubtitle');
                 deleteBtn.style.marginLeft = '10px';
                 deleteBtn.innerHTML = '<i class="md-icon">delete</i>';
 
@@ -882,7 +1386,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
 
     // 删除字幕
     function deleteSubtitle(view, item, subtitle) {
-        Dashboard.confirm('确定要删除该字幕吗？', '删除字幕', function(confirmed) {
+        Dashboard.confirm(t('deleteSubtitleConfirm'), t('deleteSubtitle'), function(confirmed) {
             if (!confirmed) {
                 return;
             }
@@ -908,7 +1412,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
                 return response.json();
             }).then(function(data) {
                 loading.hide();
-                showMessage(data.Message || '字幕删除成功', !data.Success);
+                showMessage(data.Message || t('deleteSubtitleSuccess'), !data.Success);
 
                 if (data.Success) {
                     // 延迟刷新，等待服务器元数据更新
@@ -919,7 +1423,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             }).catch(function(error) {
                 loading.hide();
                 console.error('删除字幕失败:', error);
-                showMessage('删除字幕失败: ' + error.message, true);
+                showMessage(t('deleteSubtitleFailed', { message: error.message }), true);
             });
         });
     }
@@ -972,14 +1476,14 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
         }).catch(function(error) {
             loading.hide();
             console.error('重新加载失败:', error);
-            showMessage('刷新字幕信息失败', true);
+            showMessage(t('refreshSubtitlesFailed'), true);
         });
     }
 
     // 上传字幕
     function uploadSubtitle(view) {
         if (!selectedItemId) {
-            showMessage('请选择媒体项', true);
+            showMessage(t('selectMediaItem'), true);
             return;
         }
 
@@ -989,7 +1493,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
         var fileInput = view.querySelector('#subtitleFile');
 
         if (!fileInput.files || fileInput.files.length === 0) {
-            showMessage('请选择字幕文件', true);
+            showMessage(t('selectSubtitleFile'), true);
             return;
         }
 
@@ -999,22 +1503,22 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
         var fileExtension = fileName.indexOf('.') === -1 ? '' : fileName.split('.').pop().toLowerCase();
 
         if (file.size === 0) {
-            showMessage('字幕文件为空', true);
+            showMessage(t('subtitleFileEmpty'), true);
             return;
         }
 
         if (file.size > maxSubtitleFileSize) {
-            showMessage('字幕文件超过 20MB 限制', true);
+            showMessage(t('subtitleFileTooLarge'), true);
             return;
         }
 
         if (allowedSubtitleFormats.indexOf(normalizedFormat) === -1) {
-            showMessage('字幕格式无效', true);
+            showMessage(t('invalidSubtitleFormat'), true);
             return;
         }
 
         if (fileExtension !== normalizedFormat) {
-            showMessage('字幕文件扩展名与选择的格式不一致', true);
+            showMessage(t('extensionMismatch'), true);
             return;
         }
 
@@ -1040,31 +1544,31 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
                     if (response.Success) {
                         // 清空文件选择
                         fileInput.value = '';
-                        view.querySelector('#selectedFileName').textContent = '未选择文件';
+                        view.querySelector('#selectedFileName').textContent = t('noFileSelected');
                         view.querySelector('#selectedFileName').style.color = 'rgba(255,255,255,0.7)';
 
                         // 显示成功消息
-                        showMessage('字幕上传成功', false);
+                        showMessage(response.Message || t('uploadSubtitleSuccess'), false);
 
                         // 刷新当前媒体项的字幕信息（不重置树结构）
                         setTimeout(function() {
                             reloadMediaItem(view, selectedItemId);
                         }, 500);
                     } else {
-                        showMessage('上传失败: ' + response.Message, true);
+                        showMessage(t('uploadSubtitleFailed', { message: response.Message || t('unknownError') }), true);
                     }
                 } catch (e) {
                     console.error('解析响应失败:', e);
-                    showMessage('解析响应失败: ' + e.message, true);
+                    showMessage(t('parseResponseFailed', { message: e.message }), true);
                 }
             } else {
-                showMessage('上传失败: HTTP ' + xhr.status, true);
+                showMessage(t('uploadSubtitleFailed', { message: 'HTTP ' + xhr.status }), true);
             }
         };
 
         xhr.onerror = function () {
             loading.hide();
-            showMessage('上传失败: 网络错误', true);
+            showMessage(t('uploadNetworkError'), true);
         };
 
         xhr.send(file);
@@ -1074,8 +1578,10 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
     function View(view, params) {
         BaseView.apply(this, arguments);
 
-        // 加载媒体库列表
-        loadLibraries(view);
+        // 加载语言和媒体库列表
+        initLocalization(view).then(function () {
+            loadLibraries(view);
+        });
 
         // 绑定搜索按钮
         view.querySelector('#btnSearch').addEventListener('click', function () {
@@ -1098,7 +1604,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
                 selectedFileNameSpan.textContent = fileInput.files[0].name;
                 selectedFileNameSpan.style.color = 'rgba(255,255,255,0.9)';
             } else {
-                selectedFileNameSpan.textContent = '未选择文件';
+                selectedFileNameSpan.textContent = t('noFileSelected');
                 selectedFileNameSpan.style.color = 'rgba(255,255,255,0.7)';
             }
         });
