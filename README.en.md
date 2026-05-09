@@ -36,6 +36,10 @@ The sidebar entry name is provided by Emby's plugin page registration and is usu
 - The left sidebar entry uses Emby's built-in `subtitles` menu icon.
 - The `Advanced - Plugins` page uses `icon.png` from this repository as the rectangular plugin thumbnail.
 
+<p align="center">
+  <img src="docs/images/plugin-page-en-us.png" width="720" alt="Subtitle Manager plugin page screenshot">
+</p>
+
 ## Requirements
 
 - Emby Server 4.8.10 or a compatible version
@@ -152,6 +156,7 @@ These endpoints are intended for the plugin frontend:
 ├── .github/workflows/          # GitHub Actions build workflow
 ├── Api/                        # Backend REST API controller
 ├── Configuration/              # Emby Web plugin page
+├── docs/images/                # README screenshot assets
 ├── scripts/                    # Local maintenance scripts
 ├── CHANGELOG.md                # Version history
 ├── Emby.SubtitleManager.csproj # .NET project file
