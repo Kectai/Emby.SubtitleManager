@@ -6,6 +6,8 @@
 
 [![Build](https://github.com/Kectai/Emby.SubtitleManager/actions/workflows/build.yml/badge.svg)](https://github.com/Kectai/Emby.SubtitleManager/actions/workflows/build.yml)
 
+[English](README.en.md) | 简体中文
+
 Emby Subtitle Manager 是一个 Emby Server 插件，用于在 Emby Web 管理界面中手动查看、上传和删除媒体项的外部字幕文件。
 
 插件会把字幕保存到媒体项的 Emby 内部元数据目录，并在上传或删除后刷新媒体元数据，让 Emby 重新识别字幕流。
@@ -54,7 +56,7 @@ dotnet build Emby.SubtitleManager.csproj -c Release --no-restore
 bin/Release/netstandard2.1/Emby.SubtitleManager.dll
 ```
 
-GitHub Actions 会在推送后自动编译，并上传 `Emby.SubtitleManager.dll` 作为 workflow artifact。
+GitHub Actions 仅在手动触发时编译，并上传 `Emby.SubtitleManager.dll` 作为 workflow artifact。可在仓库的 Actions 页面选择 `Build` 工作流后点击 `Run workflow`。
 
 ## 安装
 
@@ -149,6 +151,7 @@ Example.Movie.zh.forced.srt
 ├── LICENSE                     # MIT 许可证
 ├── Plugin.cs                   # 插件入口和页面注册
 ├── README.md                   # 项目说明
+├── README.en.md                # English documentation
 └── icon.png                    # 插件列表矩形缩略图
 ```
 
