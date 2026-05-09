@@ -1446,7 +1446,6 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
                 Id: itemId,  // 使用传入的 itemId（GUID 格式）
                 Name: embyItem.Name || cachedItem.Name,
                 Type: embyItem.Type || cachedItem.Type,
-                Path: cachedItem.Path,
                 ParentId: cachedItem.ParentId,
                 IndexNumber: cachedItem.IndexNumber,
                 Subtitles: [],

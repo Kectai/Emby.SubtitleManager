@@ -8,7 +8,7 @@
 
 English | [Simplified Chinese](README.md)
 
-Emby Subtitle Manager is an Emby Server plugin for manually viewing, uploading, and deleting external subtitle files from the Emby Web admin interface.
+Emby Subtitle Manager is an Emby Server plugin for viewing, uploading, and deleting external subtitle files from the Emby Web admin interface.
 
 Uploaded subtitles are saved to the video's internal Emby metadata directory. After an upload or deletion, the plugin refreshes media metadata so Emby can detect the updated subtitle streams.
 
@@ -31,7 +31,7 @@ Plugin page text and API messages follow Emby's preferred display language. Supp
 
 The sidebar entry name is provided by Emby's plugin page registration and is usually refreshed when the plugin is loaded or the server is restarted.
 
-## Plugin Display
+## Screenshots
 
 - The left sidebar entry uses Emby's built-in `subtitles` menu icon.
 - The `Advanced - Plugins` page uses `icon.png` from this repository as the rectangular plugin thumbnail.
@@ -45,7 +45,6 @@ The sidebar entry name is provided by Emby's plugin page registration and is usu
 - Emby Server 4.8.10 or a compatible version
 - .NET SDK 6.0 or later for local builds
 - Target framework: `netstandard2.1`
-- The plugin page and backend APIs require an Emby administrator account
 
 ## Build
 
@@ -66,11 +65,11 @@ Build output:
 bin/Release/netstandard2.1/Emby.SubtitleManager.dll
 ```
 
-For regular installation, download the published `Emby.SubtitleManager.dll` from [GitHub Releases](https://github.com/Kectai/Emby.SubtitleManager/releases/latest). GitHub Actions builds are manual only and mainly intended for development verification artifacts.
+For regular installation, download the published `Emby.SubtitleManager.dll` from [GitHub Releases](https://github.com/Kectai/Emby.SubtitleManager/releases/latest). GitHub Actions builds are manual only and mainly intended for development verification.
 
 ## Installation
 
-For manual installation, copy the DLL to the `plugins` directory under the Emby Server Data Folder. The active data folder can be found in the Emby Server Dashboard under Server Info.
+For manual installation, copy the DLL to the `plugins` directory under the Emby Server Data Folder. The active data folder can be found in the Emby Server Dashboard under Server Info. See Emby's official [Server Data Folder](https://emby.media/support/articles/Server-Data-Folder.html) and [Plugins](https://emby.media/support/articles/Plugins.html) documentation for more details.
 
 Common plugin directories:
 
@@ -129,24 +128,26 @@ Example.Movie.zh.forced.srt
 
 Subtitles are saved to Emby's metadata directory instead of the original media directory. This reduces the need for write access to media library folders and lets Emby manage subtitle stream detection.
 
-## Security And Limits
+Custom plugin pages are primarily intended for Emby Web. Some official mobile clients may not show the sidebar entry, or may ask you to configure the plugin from the local server web page.
 
+## Permissions And Limits
+
+- Media listing, upload, and delete APIs require an authenticated Emby administrator account. Non-admin users cannot retrieve media lists, upload subtitles, or delete subtitles.
+- The page displays subtitle file paths, so use it only in trusted administrator environments and do not expose the Emby admin interface to untrusted networks.
 - Backend subtitle format whitelist: `srt`, `ass`, `ssa`, `vtt`, `sub`.
 - Backend language code validation accepts only standard language identifier formats.
 - Uploaded files must not be empty and must be 20 MB or smaller.
 - Existing subtitle files are not overwritten. Delete the old subtitle first when replacing one.
 - The delete API only removes external subtitles recognized by the selected media item, and only when the path is inside that item's Emby metadata directory.
-- Backend APIs are restricted to Emby administrator accounts.
-- This plugin is intended for personal or trusted administrator environments. Do not expose the Emby admin interface to untrusted networks.
 
 ## API
 
-These endpoints are intended for the plugin frontend:
+These endpoints are intended for the plugin frontend. Permission rules are described in `Permissions And Limits`.
 
-- `GET /SubtitleManager/Libraries`: returns media libraries.
-- `GET /SubtitleManager/Items`: returns media items. Subtitle streams are omitted by default; use `IncludeSubtitles=true` to request subtitle information.
-- `GET /SubtitleManager/Localization`: returns the language used by the plugin page.
-- `POST /SubtitleManager/Upload`: uploads a subtitle file. Parameters include `ItemId`, `Language`, `Format`, `IsForced`, and the subtitle file stream.
+- `GET /SubtitleManager/Libraries`: returns media libraries. No parameters.
+- `GET /SubtitleManager/Items`: returns media items. Parameters include `ParentId`, `IncludeItemTypes`, `Recursive`, `StartIndex`, `Limit`, and `IncludeSubtitles`. Subtitle streams are omitted by default; use `IncludeSubtitles=true` to request subtitle information.
+- `GET /SubtitleManager/Localization`: returns the language used by the plugin page. No parameters.
+- `POST /SubtitleManager/Upload`: uploads a subtitle file. Query parameters include `ItemId`, `Language`, `Format`, and `IsForced`; the request body is the subtitle file stream.
 - `POST /SubtitleManager/DeleteSubtitle`: deletes an external subtitle from the selected media item's metadata directory. Parameters include `ItemId` and `SubtitlePath`.
 
 ## Project Structure

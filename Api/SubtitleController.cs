@@ -42,7 +42,6 @@ namespace Emby.SubtitleManager.Api
     {
         public bool Success { get; set; }
         public string Message { get; set; }
-        public string FilePath { get; set; }
     }
 
     [Route("/SubtitleManager/DeleteSubtitle", "POST", Summary = "删除字幕文件")]
@@ -111,7 +110,6 @@ namespace Emby.SubtitleManager.Api
         public string Id { get; set; }
         public string Name { get; set; }
         public string Type { get; set; }
-        public string Path { get; set; }
         public string ParentId { get; set; }
         public int? IndexNumber { get; set; }
         public SubtitleInfo[] Subtitles { get; set; }
@@ -141,6 +139,7 @@ namespace Emby.SubtitleManager.Api
     {
         private const long MaxSubtitleFileSizeBytes = 20 * 1024 * 1024;
         private static readonly TimeSpan ExtrasCacheLifetime = TimeSpan.FromMinutes(30);
+        private static readonly StringComparison PathComparison = GetPathComparison();
         private static readonly Regex LanguageCodeRegex = new Regex("^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*$", RegexOptions.Compiled);
         private static readonly HashSet<string> AllowedSubtitleFormats = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -450,8 +449,7 @@ namespace Emby.SubtitleManager.Api
                 return new UploadSubtitleResponse
                 {
                     Success = true,
-                    Message = L("uploadSuccess"),
-                    FilePath = subtitlePath
+                    Message = L("uploadSuccess")
                 };
             }
             catch (Exception ex)
@@ -680,7 +678,6 @@ namespace Emby.SubtitleManager.Api
                         Id = i.Id.ToString().Replace("-", ""),
                         Name = i.Name,
                         Type = i.GetType().Name,
-                        Path = i.Path,
                         ParentId = parentIdStr,
                         IndexNumber = i.IndexNumber,
                         Subtitles = request.IncludeSubtitles ? GetSubtitleInfo(i as Video) : new SubtitleInfo[0]
@@ -844,7 +841,6 @@ namespace Emby.SubtitleManager.Api
                             Id = folderId,
                             Name = folderName,
                             Type = "Folder",
-                            Path = extraFolderPath,
                             ParentId = parentIdStr,
                             IndexNumber = null,
                             Subtitles = new SubtitleInfo[0]
@@ -898,7 +894,6 @@ namespace Emby.SubtitleManager.Api
                         Id = video.Id.ToString().Replace("-", ""),
                         Name = video.Name,
                         Type = video.GetType().Name,
-                        Path = video.Path,
                         ParentId = parentId,
                         IndexNumber = null,
                         Subtitles = new SubtitleInfo[0]
@@ -1154,7 +1149,7 @@ namespace Emby.SubtitleManager.Api
         {
             try
             {
-                return string.Equals(Path.GetFullPath(left), Path.GetFullPath(right), StringComparison.OrdinalIgnoreCase);
+                return string.Equals(Path.GetFullPath(left), Path.GetFullPath(right), PathComparison);
             }
             catch
             {
@@ -1171,11 +1166,25 @@ namespace Emby.SubtitleManager.Api
                     .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
                     + Path.DirectorySeparatorChar;
 
-                return fullFilePath.StartsWith(fullDirectoryPath, StringComparison.OrdinalIgnoreCase);
+                return fullFilePath.StartsWith(fullDirectoryPath, PathComparison);
             }
             catch
             {
                 return false;
+            }
+        }
+
+        private static StringComparison GetPathComparison()
+        {
+            switch (Environment.OSVersion.Platform)
+            {
+                case PlatformID.Win32NT:
+                case PlatformID.Win32S:
+                case PlatformID.Win32Windows:
+                case PlatformID.WinCE:
+                    return StringComparison.OrdinalIgnoreCase;
+                default:
+                    return StringComparison.Ordinal;
             }
         }
 
