@@ -24,7 +24,12 @@ The code, documentation, icon, and project organization for this repository were
 - Subtitle upload: upload external subtitle files for selected videos, with language and forced subtitle options.
 - Subtitle deletion: delete external subtitle files recognized by the selected video.
 - Metadata refresh: refresh Emby media metadata after subtitle uploads or deletions.
-- UI localization: plugin page text and API messages follow Emby's preferred display language. Supported languages are Chinese Simplified, Chinese Traditional, Chinese Traditional (Hong Kong), English (United Kingdom), English (United States), Japanese, and Korean; unsupported languages fall back to English (United States).
+
+## UI Language
+
+Plugin page text and API messages follow Emby's preferred display language. Supported languages are Chinese Simplified, Chinese Traditional, Chinese Traditional (Hong Kong), English (United Kingdom), English (United States), Japanese, and Korean; unsupported languages fall back to English (United States).
+
+The sidebar entry name is provided by Emby's plugin page registration and is usually refreshed when the plugin is loaded or the server is restarted.
 
 ## Plugin Display
 
