@@ -62,7 +62,7 @@ dotnet build Emby.SubtitleManager.csproj -c Release --no-restore
 bin/Release/netstandard2.1/Emby.SubtitleManager.dll
 ```
 
-GitHub Actions 仅在手动触发时编译，并上传 `Emby.SubtitleManager.dll` 作为 workflow artifact。可在仓库的 Actions 页面选择 `Build` 工作流后点击 `Run workflow`。
+普通安装建议优先从 [GitHub Releases](https://github.com/Kectai/Emby.SubtitleManager/releases/latest) 下载已发布的 `Emby.SubtitleManager.dll`。GitHub Actions 仅在手动触发时编译，并上传 `Emby.SubtitleManager.dll` 作为 workflow artifact，主要用于开发验证。
 
 ## 安装
 
@@ -80,7 +80,7 @@ Linux:   /var/lib/emby/plugins/
 
 安装步骤：
 
-1. 编译或从 GitHub Actions artifact 获取 `Emby.SubtitleManager.dll`。
+1. 优先从 [Releases](https://github.com/Kectai/Emby.SubtitleManager/releases/latest) 下载最新 `Emby.SubtitleManager.dll`；也可自行编译或从 GitHub Actions artifact 获取开发构建。
 2. 停止 Emby Server，或确保更新插件时 Emby Server 未占用旧 DLL。
 3. 将 DLL 复制到 `plugins` 目录。
 4. 启动或重启 Emby Server。
