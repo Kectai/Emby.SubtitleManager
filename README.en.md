@@ -88,7 +88,7 @@ Installation steps:
 2. Stop Emby Server, or make sure the old DLL is not locked when updating the plugin.
 3. Copy the DLL to the `plugins` directory.
 4. Start or restart Emby Server.
-5. Open `字幕管理器` from the Emby Web main menu.
+5. Open `Subtitle Manager` from the Emby Web main menu.
 
 Linux example:
 
@@ -106,9 +106,9 @@ Restart-Service EmbyServer
 
 ## Usage
 
-1. Sign in to Emby Web and open `字幕管理器`.
+1. Sign in to Emby Web and open `Subtitle Manager`.
 2. Select a media library.
-3. Click `加载媒体列表`, or enter a keyword and search.
+3. Click `Load Media List`, or enter a keyword and search.
 4. Select a movie, episode, or extras video from the media tree.
 5. View existing subtitles, or choose a subtitle file and upload it.
 6. Use the delete button to remove external subtitles.
