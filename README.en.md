@@ -62,7 +62,7 @@ Build output:
 bin/Release/netstandard2.1/Emby.SubtitleManager.dll
 ```
 
-GitHub Actions builds are manual only. Open the repository's Actions page, select the `Build` workflow, and click `Run workflow` to create a workflow artifact containing `Emby.SubtitleManager.dll`.
+For regular installation, download the published `Emby.SubtitleManager.dll` from [GitHub Releases](https://github.com/Kectai/Emby.SubtitleManager/releases/latest). GitHub Actions builds are manual only and mainly intended for development verification artifacts.
 
 ## Installation
 
@@ -80,7 +80,7 @@ Linux:   /var/lib/emby/plugins/
 
 Installation steps:
 
-1. Build the project or download `Emby.SubtitleManager.dll` from a GitHub Actions artifact or release.
+1. Prefer downloading the latest `Emby.SubtitleManager.dll` from [Releases](https://github.com/Kectai/Emby.SubtitleManager/releases/latest); alternatively, build locally or use a GitHub Actions artifact for development builds.
 2. Stop Emby Server, or make sure the old DLL is not locked when updating the plugin.
 3. Copy the DLL to the `plugins` directory.
 4. Start or restart Emby Server.

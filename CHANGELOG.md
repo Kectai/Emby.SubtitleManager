@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.3.3 - 2026-05-09
+
 - 添加插件页面多语言适配，跟随 Emby 首选显示语言显示简体中文、繁体中文、繁体中文（香港）、English (United Kingdom)、English (United States)、日本語和한국어，其他语言回退为 English (United States)。
 - 上传和删除接口返回信息同步适配上述语言。
 - 修正插件语言来源，改为读取 Emby 服务器配置中的 `UICulture`，并同步适配侧边栏入口名称。
