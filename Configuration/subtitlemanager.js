@@ -1,4 +1,4 @@
-define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], function (BaseView, loading) {
+define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select', 'emby-toggle'], function (BaseView, loading) {
     'use strict';
 
     var selectedItemId = null;
@@ -498,6 +498,18 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
         view.querySelectorAll('[data-i18n-placeholder]').forEach(function (element) {
             element.setAttribute('placeholder', t(element.getAttribute('data-i18n-placeholder')));
         });
+
+        view.querySelectorAll('[data-i18n-label]').forEach(function (element) {
+            var labelText = t(element.getAttribute('data-i18n-label'));
+            var labelElement = element.closest('label');
+            var labelTextElement = labelElement ? labelElement.querySelector('.selectLabelText') : null;
+            element.setAttribute('label', labelText);
+            if (typeof element.setLabel === 'function' && labelTextElement) {
+                element.setLabel(labelText);
+            } else if (labelTextElement) {
+                labelTextElement.textContent = labelText;
+            }
+        });
     }
 
     function initLocalization(view) {
@@ -620,8 +632,8 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
         }
 
         var wrapper = document.createElement('div');
+        wrapper.className = 'loadMoreContainer';
         wrapper.setAttribute('data-load-more-container', 'true');
-        wrapper.style.marginTop = '12px';
 
         var button = document.createElement('button');
         button.type = 'button';
@@ -913,18 +925,14 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
         });
 
         var ul = document.createElement('ul');
-        ul.style.listStyle = 'none';
-        ul.style.padding = '0';
-        ul.style.margin = '0';
+        ul.className = 'mediaTreeList';
 
         sortItems(items).forEach(function (item) {
             var li = document.createElement('li');
-            li.style.padding = '4px 0';
+            li.className = 'mediaTreeNode';
 
             var itemDiv = document.createElement('div');
-            itemDiv.style.cursor = 'pointer';
-            itemDiv.style.padding = '4px 8px';
-            itemDiv.style.borderRadius = '3px';
+            itemDiv.className = 'mediaTreeRow';
             itemDiv.setAttribute('data-item-id', item.Id);
 
             var itemIsFolder = isFolder(item.Type);
@@ -932,10 +940,8 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             if (itemIsFolder) {
                 // 文件夹
                 var icon = document.createElement('span');
-                icon.textContent = '▶ ';
-                icon.style.display = 'inline-block';
-                icon.style.width = '20px';
-                icon.style.cursor = 'pointer';
+                icon.className = 'mediaTreeExpander';
+                icon.textContent = '▶';
                 icon.setAttribute('data-folder-icon', item.Id);
 
                 // 箭头点击：展开/收起
@@ -947,14 +953,12 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
                 itemDiv.appendChild(icon);
 
                 var folderIcon = document.createElement('i');
-                folderIcon.className = 'md-icon';
+                folderIcon.className = 'md-icon mediaTreeIcon';
                 folderIcon.textContent = getMediaIcon(item.Type);
-                folderIcon.style.fontSize = '20px';
-                folderIcon.style.marginRight = '6px';
-                folderIcon.style.verticalAlign = 'middle';
                 itemDiv.appendChild(folderIcon);
 
                 var text = document.createElement('span');
+                text.className = 'mediaTreeText';
                 text.textContent = formatDisplayName(item);
                 itemDiv.appendChild(text);
 
@@ -964,29 +968,19 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
                     toggleFolder(view, item.Id, li, icon);
                 });
 
-                // 鼠标悬停效果
-                itemDiv.addEventListener('mouseenter', function () {
-                    this.style.backgroundColor = 'rgba(255,255,255,0.1)';
-                });
-                itemDiv.addEventListener('mouseleave', function () {
-                    this.style.backgroundColor = '';
-                });
             } else {
                 // 媒体文件（叶子节点）
                 var indent = document.createElement('span');
-                indent.style.display = 'inline-block';
-                indent.style.width = '20px';
+                indent.className = 'mediaTreeIndent';
                 itemDiv.appendChild(indent);
 
                 var mediaIcon = document.createElement('i');
-                mediaIcon.className = 'md-icon';
+                mediaIcon.className = 'md-icon mediaTreeIcon';
                 mediaIcon.textContent = getMediaIcon(item.Type);
-                mediaIcon.style.fontSize = '20px';
-                mediaIcon.style.marginRight = '6px';
-                mediaIcon.style.verticalAlign = 'middle';
                 itemDiv.appendChild(mediaIcon);
 
                 var text = document.createElement('span');
+                text.className = 'mediaTreeText';
                 text.textContent = formatDisplayName(item);
                 itemDiv.appendChild(text);
 
@@ -996,15 +990,9 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
                     selectMedia(view, item, itemDiv);
                 });
 
-                // 鼠标悬停效果
-                itemDiv.addEventListener('mouseenter', function () {
-                    this.style.backgroundColor = 'rgba(100,150,200,0.2)';
-                });
-                itemDiv.addEventListener('mouseleave', function () {
-                    if (selectedItemId !== item.Id) {
-                        this.style.backgroundColor = '';
-                    }
-                });
+                if (selectedItemId === item.Id) {
+                    itemDiv.classList.add('mediaTreeRowSelected');
+                }
             }
 
             li.appendChild(itemDiv);
@@ -1057,7 +1045,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
 
             // 创建子树（只显示直接子项，但内部会递归构建完整树）
             var childTree = createItemListWithCache(view, directChildren, allItems);
-            childTree.style.paddingLeft = '20px';
+            childTree.classList.add('mediaTreeChildren');
             liElement.appendChild(childTree);
         }).catch(function (error) {
             loading.hide();
@@ -1075,18 +1063,14 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
         });
 
         var ul = document.createElement('ul');
-        ul.style.listStyle = 'none';
-        ul.style.padding = '0';
-        ul.style.margin = '0';
+        ul.className = 'mediaTreeList';
 
         sortItems(items).forEach(function (item) {
             var li = document.createElement('li');
-            li.style.padding = '4px 0';
+            li.className = 'mediaTreeNode';
 
             var itemDiv = document.createElement('div');
-            itemDiv.style.cursor = 'pointer';
-            itemDiv.style.padding = '4px 8px';
-            itemDiv.style.borderRadius = '3px';
+            itemDiv.className = 'mediaTreeRow';
             itemDiv.setAttribute('data-item-id', item.Id);
 
             var itemIsFolder = isFolder(item.Type);
@@ -1106,10 +1090,8 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
 
                 if (hasChildren || isExtrasFolder) {
                     var icon = document.createElement('span');
-                    icon.textContent = '▶ ';
-                    icon.style.display = 'inline-block';
-                    icon.style.width = '20px';
-                    icon.style.cursor = 'pointer';
+                    icon.className = 'mediaTreeExpander';
+                    icon.textContent = '▶';
                     icon.setAttribute('data-folder-icon', item.Id);
 
                     // 箭头点击：展开/收起
@@ -1121,14 +1103,12 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
                     itemDiv.appendChild(icon);
 
                     var folderIcon = document.createElement('i');
-                    folderIcon.className = 'md-icon';
+                    folderIcon.className = 'md-icon mediaTreeIcon';
                     folderIcon.textContent = getMediaIcon(item.Type);
-                    folderIcon.style.fontSize = '20px';
-                    folderIcon.style.marginRight = '6px';
-                    folderIcon.style.verticalAlign = 'middle';
                     itemDiv.appendChild(folderIcon);
 
                     var text = document.createElement('span');
+                    text.className = 'mediaTreeText';
                     text.textContent = formatDisplayName(item);
                     itemDiv.appendChild(text);
 
@@ -1138,40 +1118,27 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
                         toggleFolderWithCache(view, item.Id, li, icon, allItems);
                     });
 
-                    // 鼠标悬停效果
-                    itemDiv.addEventListener('mouseenter', function () {
-                        this.style.backgroundColor = 'rgba(255,255,255,0.1)';
-                    });
-                    itemDiv.addEventListener('mouseleave', function () {
-                        this.style.backgroundColor = '';
-                    });
                 } else {
                     // 文件夹但无子项，显示为普通项
                     var folderIcon = document.createElement('i');
-                    folderIcon.className = 'md-icon';
+                    folderIcon.className = 'md-icon mediaTreeIcon mediaTreeIconIndented';
                     folderIcon.textContent = getMediaIcon(item.Type);
-                    folderIcon.style.fontSize = '20px';
-                    folderIcon.style.marginRight = '6px';
-                    folderIcon.style.marginLeft = '20px';
-                    folderIcon.style.verticalAlign = 'middle';
                     itemDiv.appendChild(folderIcon);
 
                     var text = document.createElement('span');
+                    text.className = 'mediaTreeText';
                     text.textContent = formatDisplayName(item);
                     itemDiv.appendChild(text);
                 }
             } else {
                 // 叶子节点（视频等）
                 var mediaIcon = document.createElement('i');
-                mediaIcon.className = 'md-icon';
+                mediaIcon.className = 'md-icon mediaTreeIcon mediaTreeIconIndented';
                 mediaIcon.textContent = getMediaIcon(item.Type);
-                mediaIcon.style.fontSize = '20px';
-                mediaIcon.style.marginRight = '6px';
-                mediaIcon.style.marginLeft = '20px';
-                mediaIcon.style.verticalAlign = 'middle';
                 itemDiv.appendChild(mediaIcon);
 
                 var text = document.createElement('span');
+                text.className = 'mediaTreeText';
                 text.textContent = formatDisplayName(item);
                 itemDiv.appendChild(text);
 
@@ -1181,21 +1148,9 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
                     selectMedia(view, item, itemDiv);
                 });
 
-                // 鼠标悬停效果
-                itemDiv.addEventListener('mouseenter', function () {
-                    if (selectedItemId !== item.Id) {
-                        this.style.backgroundColor = 'rgba(255,255,255,0.1)';
-                    }
-                });
-                itemDiv.addEventListener('mouseleave', function () {
-                    if (selectedItemId !== item.Id) {
-                        this.style.backgroundColor = '';
-                    }
-                });
-
                 // 如果是当前选中的项，设置背景色
                 if (selectedItemId === item.Id) {
-                    itemDiv.style.backgroundColor = 'rgba(100,150,200,0.3)';
+                    itemDiv.classList.add('mediaTreeRowSelected');
                 }
             }
 
@@ -1260,7 +1215,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
 
                     // 创建子树
                     var childTree = createItemListWithCache(view, items, mergedItems);
-                    childTree.style.paddingLeft = '20px';
+                    childTree.classList.add('mediaTreeChildren');
                     liElement.appendChild(childTree);
                 }).catch(function(err) {
                     loading.hide();
@@ -1277,7 +1232,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
 
             // 创建子树
             var childTree = createItemListWithCache(view, children, allItems);
-            childTree.style.paddingLeft = '20px';
+            childTree.classList.add('mediaTreeChildren');
             liElement.appendChild(childTree);
         }
     }
@@ -1285,16 +1240,14 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
     // 选择媒体项
     function selectMedia(view, item, itemDiv) {
         // 清除之前的选中状态
-        view.querySelectorAll('#mediaTree div[data-item-id]').forEach(function (div) {
-            if (div.getAttribute('data-item-id') === selectedItemId) {
-                div.style.backgroundColor = '';
-            }
+        view.querySelectorAll('#mediaTree .mediaTreeRowSelected').forEach(function (div) {
+            div.classList.remove('mediaTreeRowSelected');
         });
 
         // 设置新的选中状态
         selectedItemId = item.Id;
         if (itemDiv) {
-            itemDiv.style.backgroundColor = 'rgba(100,150,200,0.3)';
+            itemDiv.classList.add('mediaTreeRowSelected');
         }
 
         // 优先从缓存读取最新数据；字幕流按需加载，避免媒体列表接口过重
@@ -1328,13 +1281,10 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
 
         item.Subtitles.forEach(function (sub, index) {
             var listItem = document.createElement('div');
-            listItem.className = 'listItem';
-            listItem.style.display = 'flex';
-            listItem.style.alignItems = 'center';
+            listItem.className = 'listItem currentSubtitleListItem';
 
             var listItemBody = document.createElement('div');
-            listItemBody.className = 'listItemBody two-line';
-            listItemBody.style.flex = '1';
+            listItemBody.className = 'listItemBody two-line currentSubtitleBody';
 
             var textDiv1 = document.createElement('div');
             textDiv1.className = 'listItemBodyText';
@@ -1360,9 +1310,8 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             if (sub.IsExternal && (sub.Path || sub.Index !== undefined)) {
                 var deleteBtn = document.createElement('button');
                 deleteBtn.type = 'button';
-                deleteBtn.className = 'paper-icon-button-light';
+                deleteBtn.className = 'paper-icon-button-light currentSubtitleDelete';
                 deleteBtn.title = t('deleteSubtitle');
-                deleteBtn.style.marginLeft = '10px';
                 deleteBtn.innerHTML = '<i class="md-icon">delete</i>';
 
                 deleteBtn.addEventListener('click', function() {
@@ -1546,7 +1495,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
                         // 清空文件选择
                         fileInput.value = '';
                         view.querySelector('#selectedFileName').textContent = t('noFileSelected');
-                        view.querySelector('#selectedFileName').style.color = 'rgba(255,255,255,0.7)';
+                        view.querySelector('#selectedFileName').classList.remove('hasSelectedFile');
 
                         // 显示成功消息
                         showMessage(response.Message || t('uploadSubtitleSuccess'), false);
@@ -1608,10 +1557,10 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
         fileInput.addEventListener('change', function () {
             if (fileInput.files && fileInput.files.length > 0) {
                 selectedFileNameSpan.textContent = fileInput.files[0].name;
-                selectedFileNameSpan.style.color = 'rgba(255,255,255,0.9)';
+                selectedFileNameSpan.classList.add('hasSelectedFile');
             } else {
                 selectedFileNameSpan.textContent = t('noFileSelected');
-                selectedFileNameSpan.style.color = 'rgba(255,255,255,0.7)';
+                selectedFileNameSpan.classList.remove('hasSelectedFile');
             }
         });
 

@@ -1,4 +1,129 @@
-<div id="subtitleManagerPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select" data-controller="__plugin/subtitleManagerJS">
+<div id="subtitleManagerPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-toggle" data-controller="__plugin/subtitleManagerJS">
+    <style>
+        #subtitleManagerPage .subtitleManagerSelect .selectLabel,
+        #subtitleManagerPage .subtitleManagerSelect .emby-select-wrapper {
+            width: 100%;
+        }
+
+        #subtitleManagerPage .mediaTreePanel {
+            width: 100%;
+            box-sizing: border-box;
+            max-height: 32rem;
+            overflow-y: auto;
+            padding: 0.35em;
+            border: 1px solid rgba(127, 127, 127, 0.24);
+            border-radius: 0.3em;
+            background: rgba(127, 127, 127, 0.06);
+        }
+
+        #subtitleManagerPage .mediaTreeList {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #subtitleManagerPage .mediaTreeChildren {
+            margin-left: 1.15em;
+            padding-left: 0.45em;
+            border-left: 1px solid rgba(127, 127, 127, 0.18);
+        }
+
+        #subtitleManagerPage .mediaTreeNode {
+            padding: 0.08em 0;
+        }
+
+        #subtitleManagerPage .mediaTreeRow {
+            display: flex;
+            align-items: center;
+            min-height: 2.15em;
+            padding: 0.25em 0.55em;
+            border-radius: 0.3em;
+            cursor: pointer;
+        }
+
+        #subtitleManagerPage .mediaTreeRow:hover {
+            background: rgba(127, 127, 127, 0.16);
+        }
+
+        #subtitleManagerPage .mediaTreeRowSelected,
+        #subtitleManagerPage .mediaTreeRowSelected:hover {
+            background: rgba(82, 181, 75, 0.18);
+        }
+
+        #subtitleManagerPage .mediaTreeExpander,
+        #subtitleManagerPage .mediaTreeIndent {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.4em;
+            flex: 0 0 1.4em;
+        }
+
+        #subtitleManagerPage .mediaTreeIcon {
+            font-size: 1.25em;
+            margin-right: 0.45em;
+            flex: 0 0 auto;
+        }
+
+        #subtitleManagerPage .mediaTreeIconIndented {
+            margin-left: 1.4em;
+        }
+
+        #subtitleManagerPage .mediaTreeText {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #subtitleManagerPage .loadMoreContainer {
+            margin-top: 0.75em;
+        }
+
+        #subtitleManagerPage .subtitleFileControl {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.75em;
+        }
+
+        #subtitleManagerPage .subtitleFileButton {
+            margin: 0;
+        }
+
+        #subtitleManagerPage .subtitleFileButtonIcon {
+            margin-right: 0.35em;
+        }
+
+        #subtitleManagerPage .subtitleFileStatus {
+            margin-top: 0.6em;
+            opacity: 0.7;
+            overflow-wrap: anywhere;
+        }
+
+        #subtitleManagerPage .subtitleFileStatus.hasSelectedFile {
+            opacity: 0.9;
+        }
+
+        #subtitleManagerPage .subtitleFileInput {
+            display: none;
+        }
+
+        #subtitleManagerPage .currentSubtitleListItem {
+            display: flex;
+            align-items: center;
+            gap: 0.75em;
+        }
+
+        #subtitleManagerPage .currentSubtitleBody {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        #subtitleManagerPage .currentSubtitleDelete {
+            flex: 0 0 auto;
+        }
+    </style>
     <div data-role="content">
         <div class="content-primary">
             <form id="subtitleManagerForm" class="auto-center padded-top fieldsets">
@@ -6,16 +131,10 @@
                 <fieldset>
                     <legend data-i18n="chooseMedia">选择媒体</legend>
                     <div class="fieldset-fields">
-                        <div class="selectContainer fieldset-field">
-                            <label class="selectLabel">
-                                <div class="selectLabelText" data-i18n="mediaLibrary">媒体库</div>
-                                <div class="emby-select-wrapper emby-select-wrapper-smaller">
-                                    <select is="emby-select" id="selectLibrary" class="emby-select">
-                                        <option value="" data-i18n="loading">加载中...</option>
-                                    </select>
-                                    <div class="selectArrowContainer"><i class="selectArrow md-icon"></i></div>
-                                </div>
-                            </label>
+                        <div class="selectContainer fieldset-field subtitleManagerSelect">
+                            <select is="emby-select" id="selectLibrary" data-i18n-label="mediaLibrary" label="媒体库">
+                                <option value="" data-i18n="loading">加载中...</option>
+                            </select>
                         </div>
 
                         <div class="inputContainer fieldset-field">
@@ -36,7 +155,7 @@
                     <legend data-i18n="mediaItems">媒体项</legend>
                     <div class="fieldset-fields">
                         <div class="fieldset-field">
-                            <div id="mediaTree" style="max-height: 500px; overflow-y: auto; border: 1px solid #333; padding: 10px;">
+                            <div id="mediaTree" class="mediaTreePanel">
                                 <div class="fieldDescription" data-i18n="loadListFirst">请先选择媒体库并加载列表</div>
                             </div>
                         </div>
@@ -57,63 +176,50 @@
                 <fieldset>
                     <legend data-i18n="uploadNewSubtitle">上传新字幕</legend>
                     <div class="fieldset-fields">
-                        <div class="selectContainer fieldset-field">
-                            <label class="selectLabel">
-                                <div class="selectLabelText" data-i18n="subtitleLanguage">字幕语言</div>
-                                <div class="emby-select-wrapper emby-select-wrapper-smaller">
-                                    <select is="emby-select" id="selectLanguage" class="emby-select">
-                                        <option value="zh" data-i18n="langZh">中文</option>
-                                        <option value="zh-Hans" data-i18n="langZhHans">简体中文</option>
-                                        <option value="zh-Hant" data-i18n="langZhHant">繁体中文</option>
-                                        <option value="zh-HK" data-i18n="langZhHantHk">繁体中文（香港）</option>
-                                        <option value="en" data-i18n="langEn">英语</option>
-                                        <option value="ja" data-i18n="langJa">日语</option>
-                                        <option value="ko" data-i18n="langKo">韩语</option>
-                                        <option value="fr" data-i18n="langFr">法语</option>
-                                        <option value="de" data-i18n="langDe">德语</option>
-                                        <option value="es" data-i18n="langEs">西班牙语</option>
-                                    </select>
-                                    <div class="selectArrowContainer"><i class="selectArrow md-icon"></i></div>
-                                </div>
-                            </label>
+                        <div class="selectContainer fieldset-field subtitleManagerSelect">
+                            <select is="emby-select" id="selectLanguage" data-i18n-label="subtitleLanguage" label="字幕语言">
+                                <option value="zh" data-i18n="langZh">中文</option>
+                                <option value="zh-Hans" data-i18n="langZhHans">简体中文</option>
+                                <option value="zh-Hant" data-i18n="langZhHant">繁体中文</option>
+                                <option value="zh-HK" data-i18n="langZhHantHk">繁体中文（香港）</option>
+                                <option value="en" data-i18n="langEn">英语</option>
+                                <option value="ja" data-i18n="langJa">日语</option>
+                                <option value="ko" data-i18n="langKo">韩语</option>
+                                <option value="fr" data-i18n="langFr">法语</option>
+                                <option value="de" data-i18n="langDe">德语</option>
+                                <option value="es" data-i18n="langEs">西班牙语</option>
+                            </select>
                         </div>
 
-                        <div class="selectContainer fieldset-field">
-                            <label class="selectLabel">
-                                <div class="selectLabelText" data-i18n="subtitleFormat">字幕格式</div>
-                                <div class="emby-select-wrapper emby-select-wrapper-smaller">
-                                    <select is="emby-select" id="selectFormat" class="emby-select">
-                                        <option value="srt">SRT (SubRip)</option>
-                                        <option value="ass">ASS (Advanced SubStation)</option>
-                                        <option value="ssa">SSA (SubStation Alpha)</option>
-                                        <option value="vtt">VTT (WebVTT)</option>
-                                        <option value="sub">SUB (MicroDVD)</option>
-                                    </select>
-                                    <div class="selectArrowContainer"><i class="selectArrow md-icon"></i></div>
-                                </div>
-                            </label>
+                        <div class="selectContainer fieldset-field subtitleManagerSelect">
+                            <select is="emby-select" id="selectFormat" data-i18n-label="subtitleFormat" label="字幕格式">
+                                <option value="srt">SRT (SubRip)</option>
+                                <option value="ass">ASS (Advanced SubStation)</option>
+                                <option value="ssa">SSA (SubStation Alpha)</option>
+                                <option value="vtt">VTT (WebVTT)</option>
+                                <option value="sub">SUB (MicroDVD)</option>
+                            </select>
                         </div>
 
                         <div class="toggleContainer fieldset-field">
                             <label class="emby-toggle-label">
                                 <input is="emby-toggle" type="checkbox" id="chkForced" class="emby-toggle" role="switch">
-                                <span data-i18n="forcedSubtitle">强制字幕</span>
-                                <span class="toggleLabel flex-grow"></span>
+                                <span class="toggleLabel flex-grow" data-i18n="forcedSubtitle">强制字幕</span>
                                 <div class="toggleSwitch"></div>
                             </label>
                             <div class="fieldDescription toggleFieldDescription" data-i18n="forcedDescription">用于仅在外语对话时显示的字幕</div>
                         </div>
 
-                        <div class="inputContainer fieldset-field">
+                        <div class="inputContainer fieldset-field subtitleFileField">
                             <label class="inputLabel" data-i18n="subtitleFile">字幕文件</label>
-                            <div style="display: flex; align-items: flex-start; gap: 10px;">
-                                <button is="emby-button" type="button" class="raised emby-button" id="btnSelectFile" style="flex-shrink: 0; white-space: nowrap;">
-                                    <i class="md-icon" style="margin-right: 6px;">attach_file</i>
+                            <div class="subtitleFileControl">
+                                <button is="emby-button" type="button" class="raised emby-button subtitleFileButton" id="btnSelectFile">
+                                    <i class="md-icon subtitleFileButtonIcon">attach_file</i>
                                     <span data-i18n="selectFile">选择文件</span>
                                 </button>
-                                <span id="selectedFileName" style="flex: 1; min-width: 0; color: rgba(255,255,255,0.7); word-break: break-word;" data-i18n="noFileSelected">未选择文件</span>
-                                <input type="file" id="subtitleFile" style="display: none;" accept=".srt,.ass,.ssa,.vtt,.sub" />
+                                <input type="file" id="subtitleFile" class="subtitleFileInput" accept=".srt,.ass,.ssa,.vtt,.sub" />
                             </div>
+                            <div id="selectedFileName" class="fieldDescription subtitleFileStatus" data-i18n="noFileSelected">未选择文件</div>
                             <div class="fieldDescription" data-i18n="supportedFormats">支持格式: SRT, ASS, SSA, VTT, SUB</div>
                         </div>
 
