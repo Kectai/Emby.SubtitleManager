@@ -18,8 +18,8 @@ The code, documentation, icon, and project organization for this repository were
 
 ## Features
 
-- Media library browsing: browse movies, series, seasons, folders, and extras videos in a hierarchical tree.
-- Media search: search media items by name and display matching results in a tree view.
+- Media library browsing: browse movies, series, seasons, folders, and extras videos in a hierarchical tree with paged loading.
+- Media search: search media items by name using backend paged results.
 - Subtitle viewing: view the language, path, external subtitle flag, and forced subtitle flag for selected videos.
 - Subtitle upload: upload external subtitle files for selected videos, with language and forced subtitle options.
 - Subtitle deletion: delete external subtitle files recognized by the selected video.
@@ -107,7 +107,7 @@ Restart-Service EmbyServer
 
 1. Sign in to Emby Web and open `Subtitle Manager`.
 2. Select a media library.
-3. Click `Load Media List`, or enter a keyword and search.
+3. Click `Load Media List`, or enter a keyword and search; use `Load more` when more results are available.
 4. Select a movie, episode, or extras video from the media tree.
 5. View existing subtitles, or choose a subtitle file and upload it.
 6. Use the delete button to remove external subtitles.
@@ -138,17 +138,17 @@ Custom plugin pages are primarily intended for Emby Web. Some official mobile cl
 - Backend language code validation accepts only standard language identifier formats.
 - Uploaded files must not be empty and must be 20 MB or smaller.
 - Existing subtitle files are not overwritten. Delete the old subtitle first when replacing one.
-- The delete API only removes external subtitles recognized by the selected media item, and only when the path is inside that item's Emby metadata directory.
+- The delete API prefers subtitle stream indexes and keeps the path parameter only as a compatibility fallback. It only removes external subtitles recognized by the selected media item and located inside that item's Emby metadata directory.
 
 ## API
 
 These endpoints are intended for the plugin frontend. Permission rules are described in `Permissions And Limits`.
 
 - `GET /SubtitleManager/Libraries`: returns media libraries. No parameters.
-- `GET /SubtitleManager/Items`: returns media items. Parameters include `ParentId`, `IncludeItemTypes`, `Recursive`, `StartIndex`, `Limit`, and `IncludeSubtitles`. Subtitle streams are omitted by default; use `IncludeSubtitles=true` to request subtitle information.
+- `GET /SubtitleManager/Items`: returns media items. Parameters include `ParentId`, `IncludeItemTypes`, `Recursive`, `SearchTerm`, `StartIndex`, `Limit`, and `IncludeSubtitles`. Subtitle streams are omitted by default; use `IncludeSubtitles=true` to request subtitle information.
 - `GET /SubtitleManager/Localization`: returns the language used by the plugin page. No parameters.
 - `POST /SubtitleManager/Upload`: uploads a subtitle file. Query parameters include `ItemId`, `Language`, `Format`, and `IsForced`; the request body is the subtitle file stream.
-- `POST /SubtitleManager/DeleteSubtitle`: deletes an external subtitle from the selected media item's metadata directory. Parameters include `ItemId` and `SubtitlePath`.
+- `POST /SubtitleManager/DeleteSubtitle`: deletes an external subtitle from the selected media item's metadata directory. Parameters include `ItemId` plus the preferred `SubtitleIndex` or compatibility fallback `SubtitlePath`.
 
 ## Project Structure
 

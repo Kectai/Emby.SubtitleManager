@@ -5,6 +5,8 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
     var expandedFolders = {}; // 记录已展开的文件夹
     var itemsCache = {}; // 缓存所有媒体项数据（key: itemId, value: item对象）
     var maxSubtitleFileSize = 20 * 1024 * 1024;
+    var itemsPageSize = 200;
+    var searchPageSize = 200;
     var allowedSubtitleFormats = ['srt', 'ass', 'ssa', 'vtt', 'sub'];
     var currentCulture = 'en-US';
     var translations = {
@@ -39,6 +41,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             searchMediaFailed: 'Failed to search media: {message}',
             loadChildrenFailed: 'Failed to load child items: {message}',
             noMatchingItems: 'No matching media items found',
+            loadMore: 'Load more',
             loadingSubtitles: 'Loading subtitles...',
             noSubtitles: 'This media item has no subtitles',
             unknownLanguage: 'Unknown language',
@@ -106,6 +109,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             searchMediaFailed: '搜索媒体失败: {message}',
             loadChildrenFailed: '加载子项失败: {message}',
             noMatchingItems: '未找到匹配的媒体项',
+            loadMore: '加载更多',
             loadingSubtitles: '正在加载字幕...',
             noSubtitles: '该媒体项暂无字幕',
             unknownLanguage: '未知语言',
@@ -173,6 +177,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             searchMediaFailed: '搜尋媒體失敗: {message}',
             loadChildrenFailed: '載入子項失敗: {message}',
             noMatchingItems: '找不到符合的媒體項目',
+            loadMore: '載入更多',
             loadingSubtitles: '正在載入字幕...',
             noSubtitles: '此媒體項目沒有字幕',
             unknownLanguage: '未知語言',
@@ -240,6 +245,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             searchMediaFailed: '搜尋媒體失敗: {message}',
             loadChildrenFailed: '載入子項失敗: {message}',
             noMatchingItems: '找不到符合的媒體項目',
+            loadMore: '載入更多',
             loadingSubtitles: '正在載入字幕...',
             noSubtitles: '此媒體項目沒有字幕',
             unknownLanguage: '未知語言',
@@ -307,6 +313,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             searchMediaFailed: 'メディアの検索に失敗しました: {message}',
             loadChildrenFailed: '子項目の読み込みに失敗しました: {message}',
             noMatchingItems: '一致するメディア項目が見つかりません',
+            loadMore: 'さらに読み込む',
             loadingSubtitles: '字幕を読み込み中...',
             noSubtitles: 'このメディア項目には字幕がありません',
             unknownLanguage: '不明な言語',
@@ -374,6 +381,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             searchMediaFailed: '미디어 검색에 실패했습니다: {message}',
             loadChildrenFailed: '하위 항목을 불러오지 못했습니다: {message}',
             noMatchingItems: '일치하는 미디어 항목이 없습니다',
+            loadMore: '더 불러오기',
             loadingSubtitles: '자막을 불러오는 중...',
             noSubtitles: '이 미디어 항목에는 자막이 없습니다',
             unknownLanguage: '알 수 없는 언어',
@@ -509,6 +517,118 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             message: message,
             title: isError ? t('errorTitle') : t('successTitle')
         });
+    }
+
+    function resetMediaState(view) {
+        selectedItemId = null;
+        expandedFolders = {};
+        itemsCache = {};
+
+        var treeContainer = view.querySelector('#mediaTree');
+        if (treeContainer) {
+            setFieldDescription(treeContainer, 'loadListFirst');
+        }
+
+        var subtitlesContainer = view.querySelector('#currentSubtitles');
+        if (subtitlesContainer) {
+            setFieldDescription(subtitlesContainer, 'selectMediaToViewSubtitles');
+        }
+    }
+
+    function removeLoadMoreButton(container) {
+        var existing = container.querySelector('[data-load-more-container]');
+        if (existing) {
+            existing.remove();
+        }
+    }
+
+    function appendItemsToTree(view, treeContainer, items) {
+        var existingList = treeContainer.querySelector('ul[data-root-items]');
+        var newList = createItemList(view, items);
+
+        if (!existingList) {
+            newList.setAttribute('data-root-items', 'true');
+            treeContainer.appendChild(newList);
+            return;
+        }
+
+        while (newList.firstChild) {
+            existingList.appendChild(newList.firstChild);
+        }
+    }
+
+    function mergeItemLists(primaryItems, secondaryItems) {
+        var merged = [];
+        var seen = {};
+
+        (primaryItems || []).forEach(function (item) {
+            if (!seen[item.Id]) {
+                seen[item.Id] = true;
+                merged.push(item);
+            }
+        });
+
+        (secondaryItems || []).forEach(function (item) {
+            if (!seen[item.Id]) {
+                seen[item.Id] = true;
+                merged.push(item);
+            }
+        });
+
+        return merged;
+    }
+
+    function loadAllItemPages(apiClient, baseQuery, pageSize) {
+        var allItems = [];
+        pageSize = pageSize || itemsPageSize;
+
+        function loadPage(startIndex) {
+            var query = {};
+            Object.keys(baseQuery).forEach(function (key) {
+                query[key] = baseQuery[key];
+            });
+            query.StartIndex = startIndex;
+            query.Limit = pageSize;
+
+            return apiClient.getJSON(apiClient.getUrl('/SubtitleManager/Items', query)).then(function (result) {
+                var pageItems = result.Items || [];
+                var totalRecordCount = result.TotalRecordCount || pageItems.length;
+                allItems = mergeItemLists(allItems, pageItems);
+
+                var nextStartIndex = startIndex + pageSize;
+                if (pageItems.length >= pageSize && nextStartIndex < totalRecordCount) {
+                    return loadPage(nextStartIndex);
+                }
+
+                return {
+                    Items: allItems,
+                    TotalRecordCount: Math.max(totalRecordCount, allItems.length)
+                };
+            });
+        }
+
+        return loadPage(0);
+    }
+
+    function appendLoadMoreButton(view, treeContainer, loadedCount, totalCount, onClick) {
+        removeLoadMoreButton(treeContainer);
+
+        if (!totalCount || loadedCount >= totalCount) {
+            return;
+        }
+
+        var wrapper = document.createElement('div');
+        wrapper.setAttribute('data-load-more-container', 'true');
+        wrapper.style.marginTop = '12px';
+
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'raised emby-button';
+        button.textContent = t('loadMore') + ' (' + loadedCount + '/' + totalCount + ')';
+        button.addEventListener('click', onClick);
+
+        wrapper.appendChild(button);
+        treeContainer.appendChild(wrapper);
     }
 
     // 加载媒体库列表
@@ -656,25 +776,32 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
     }
 
     // 加载根目录项
-    function loadRootItems(view, libraryId) {
+    function loadRootItems(view, libraryId, startIndex) {
         loading.show();
         var apiClient = getApiClient();
+        startIndex = startIndex || 0;
 
         var url = apiClient.getUrl('/SubtitleManager/Items', {
             ParentId: libraryId,
             Recursive: false,
-            Limit: 200
+            StartIndex: startIndex,
+            Limit: itemsPageSize
         });
 
         apiClient.getJSON(url).then(function (result) {
             loading.hide();
             var items = result.Items || [];
+            var totalRecordCount = result.TotalRecordCount || items.length;
 
             // 渲染树形结构
             var treeContainer = view.querySelector('#mediaTree');
-            treeContainer.innerHTML = '';
+            if (startIndex === 0) {
+                treeContainer.innerHTML = '';
+            } else {
+                removeLoadMoreButton(treeContainer);
+            }
 
-            if (items.length === 0) {
+            if (items.length === 0 && startIndex === 0) {
                 setFieldDescription(treeContainer, 'emptyLibrary');
                 return;
             }
@@ -689,15 +816,12 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
                 }
             });
 
-            if (needsParentFetch && Object.keys(parentIdsToFetch).length > 0) {
+            if (startIndex === 0 && needsParentFetch && Object.keys(parentIdsToFetch).length > 0) {
                 // 使用递归查询获取完整树（包括被跳过的中间层）
-                var recursiveUrl = apiClient.getUrl('/SubtitleManager/Items', {
+                loadAllItemPages(apiClient, {
                     ParentId: libraryId,
-                    Recursive: true,
-                    Limit: 500
-                });
-
-                apiClient.getJSON(recursiveUrl).then(function(recursiveResult) {
+                    Recursive: true
+                }, itemsPageSize).then(function(recursiveResult) {
                     var allItems = recursiveResult.Items || [];
 
                     // 构建 ID 映射
@@ -715,18 +839,21 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
                         }
                     }
 
-                    var ul = createItemList(view, rootItems);
-                    treeContainer.appendChild(ul);
+                    appendItemsToTree(view, treeContainer, rootItems);
                 }).catch(function(error) {
                     console.error('获取完整树失败，降级显示:', error);
                     // 降级：显示原始结果
-                    var ul = createItemList(view, items);
-                    treeContainer.appendChild(ul);
+                    appendItemsToTree(view, treeContainer, items);
+                    appendLoadMoreButton(view, treeContainer, startIndex + items.length, totalRecordCount, function () {
+                        loadRootItems(view, libraryId, startIndex + items.length);
+                    });
                 });
             } else {
                 // 正常情况：直接显示
-                var ul = createItemList(view, items);
-                treeContainer.appendChild(ul);
+                appendItemsToTree(view, treeContainer, items);
+                appendLoadMoreButton(view, treeContainer, startIndex + items.length, totalRecordCount, function () {
+                    loadRootItems(view, libraryId, startIndex + items.length);
+                });
             }
         }).catch(function (error) {
             loading.hide();
@@ -736,174 +863,45 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
     }
 
     // 递归搜索（用于搜索框）
-    function searchRecursive(view, libraryId, searchText) {
+    function searchRecursive(view, libraryId, searchText, startIndex) {
         loading.show();
         var apiClient = getApiClient();
+        startIndex = startIndex || 0;
 
-        // 获取所有项（不在 API 层过滤，这样才能获取完整的父级关系）
+        // 使用后端 SearchTerm 和分页，避免大型库一次性拉取大量项目。
         var url = apiClient.getUrl('/SubtitleManager/Items', {
             ParentId: libraryId,
             Recursive: true,
-            Limit: 2000  // 增加限制以获取更多项
+            SearchTerm: searchText,
+            StartIndex: startIndex,
+            Limit: searchPageSize
         });
 
         apiClient.getJSON(url).then(function (result) {
             loading.hide();
-            var allItems = result.Items || [];
+            var matchedItems = result.Items || [];
+            var totalRecordCount = result.TotalRecordCount || matchedItems.length;
+            var treeContainer = view.querySelector('#mediaTree');
 
-            // 在前端过滤搜索结果（包含文件夹和媒体文件）
-            var matchedItems = allItems.filter(function (item) {
-                return item.Name.toLowerCase().indexOf(searchText.toLowerCase()) !== -1;
+            if (startIndex === 0) {
+                treeContainer.innerHTML = '';
+            } else {
+                removeLoadMoreButton(treeContainer);
+            }
+
+            if (matchedItems.length === 0 && startIndex === 0) {
+                setFieldDescription(treeContainer, 'noMatchingItems');
+                return;
+            }
+
+            appendItemsToTree(view, treeContainer, matchedItems);
+            appendLoadMoreButton(view, treeContainer, startIndex + matchedItems.length, totalRecordCount, function () {
+                searchRecursive(view, libraryId, searchText, startIndex + matchedItems.length);
             });
-
-            // 渲染搜索结果（树形结构）
-            renderSearchResultsAsTree(view, matchedItems, allItems, libraryId);
         }).catch(function (error) {
             loading.hide();
             console.error('搜索媒体失败:', error);
             showMessage(t('searchMediaFailed', { message: error.message }), true);
-        });
-    }
-
-    // 渲染搜索结果为树形结构
-    function renderSearchResultsAsTree(view, matchedItems, allItems, libraryId) {
-        var treeContainer = view.querySelector('#mediaTree');
-        treeContainer.innerHTML = '';
-
-        if (matchedItems.length === 0) {
-            setFieldDescription(treeContainer, 'noMatchingItems');
-            return;
-        }
-
-        // 创建 ID 到项的映射
-        var itemMap = {};
-        allItems.forEach(function (item) {
-            itemMap[item.Id] = item;
-        });
-
-        // 找到所有需要显示的项（匹配项及其所有父级）
-        var itemsToShow = {};
-        var itemsToExpand = {};
-        var matchedItemIds = {}; // 记录哪些是真正匹配的项
-
-        matchedItems.forEach(function (matchedItem) {
-            // 标记匹配项
-            itemsToShow[matchedItem.Id] = matchedItem;
-            matchedItemIds[matchedItem.Id] = true;
-
-            // 如果匹配项本身是文件夹，也标记为需要展开（它可能有子项也匹配了）
-            if (isFolder(matchedItem.Type)) {
-                itemsToExpand[matchedItem.Id] = true;
-            }
-
-            // 向上查找所有父级，但只添加父级的父级也在搜索结果中的父级
-            var currentId = matchedItem.ParentId;
-            var depth = 0;
-            while (currentId && depth < 10) {
-                // 检查父级是否在 allItems 中（即在搜索范围内）
-                if (!itemMap[currentId]) {
-                    break;
-                }
-
-                var parentItem = itemMap[currentId];
-
-                // 如果父级已经在结果中
-                if (itemsToShow[parentItem.Id]) {
-                    // 如果父级不是匹配项（是其他匹配项的父级），则标记为需要展开
-                    if (!matchedItemIds[parentItem.Id]) {
-                        itemsToExpand[parentItem.Id] = true;
-                    }
-                    break;
-                }
-
-                itemsToShow[parentItem.Id] = parentItem;
-                // 父级需要自动展开（因为它包含匹配的子项）
-                itemsToExpand[parentItem.Id] = true;
-                currentId = parentItem.ParentId;
-                depth++;
-            }
-        });
-
-        // 找出根节点：优先使用 ParentId === libraryId 的项（与正常加载一致）
-        var rootItems = [];
-        for (var id in itemsToShow) {
-            var item = itemsToShow[id];
-            if (item.ParentId === libraryId) {
-                rootItems.push(item);
-            }
-        }
-
-        // 如果没有找到 ParentId === libraryId 的项，则使用父级不在结果集中的项作为根节点
-        if (rootItems.length === 0) {
-            for (var id in itemsToShow) {
-                var item = itemsToShow[id];
-                if (!itemsToShow[item.ParentId]) {
-                    rootItems.push(item);
-                }
-            }
-        }
-
-        if (rootItems.length === 0) {
-            setFieldDescription(treeContainer, 'noMatchingItems');
-            return;
-        }
-
-        // 显示根节点
-        var ul = createItemList(view, rootItems);
-        treeContainer.appendChild(ul);
-
-        // 自动展开包含匹配项的路径（延迟执行以确保 DOM 已渲染）
-        setTimeout(function () {
-            rootItems.forEach(function (rootItem) {
-                if (itemsToExpand[rootItem.Id]) {
-                    autoExpandPath(view, rootItem, itemsToShow, itemsToExpand);
-                }
-            });
-        }, 100);
-    }
-
-    // 自动展开路径到匹配项
-    function autoExpandPath(view, item, itemsToShow, itemsToExpand) {
-        // 找到该项的 DOM 元素（修正选择器）
-        var itemDiv = view.querySelector('#mediaTree [data-item-id="' + item.Id + '"]');
-        if (!itemDiv) {
-            return;
-        }
-
-        var liElement = itemDiv.parentElement;
-        var iconElement = itemDiv.querySelector('[data-folder-icon="' + item.Id + '"]');
-
-        // 获取子项（只显示在 itemsToShow 中的子项）
-        var children = [];
-        for (var id in itemsToShow) {
-            var childItem = itemsToShow[id];
-            if (childItem.ParentId === item.Id) {
-                children.push(childItem);
-            }
-        }
-
-        if (children.length === 0) return;
-
-        // 标记为已展开
-        expandedFolders[item.Id] = children;
-
-        // 更新图标
-        if (iconElement) {
-            iconElement.textContent = '▼ ';
-        }
-
-        // 创建子树
-        var childTree = createItemList(view, children);
-        childTree.style.paddingLeft = '20px';
-        liElement.appendChild(childTree);
-
-        // 递归展开子项
-        children.forEach(function (child) {
-            if (itemsToExpand[child.Id]) {
-                setTimeout(function () {
-                    autoExpandPath(view, child, itemsToShow, itemsToExpand);
-                }, 50);
-            }
         });
     }
 
@@ -1040,13 +1038,10 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
         var apiClient = getApiClient();
 
         // 使用递归查询获取所有后代项（包括子目录中的媒体文件）
-        var url = apiClient.getUrl('/SubtitleManager/Items', {
+        loadAllItemPages(apiClient, {
             ParentId: folderId,
-            Recursive: true,
-            Limit: 500
-        });
-
-        apiClient.getJSON(url).then(function (result) {
+            Recursive: true
+        }, itemsPageSize).then(function (result) {
             loading.hide();
             var allItems = result.Items || [];
 
@@ -1243,21 +1238,23 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             if (needBackendLoad) {
                 loading.show();
                 var apiClient = getApiClient();
-                var url = apiClient.getUrl('/SubtitleManager/Items', {
+                loadAllItemPages(apiClient, {
                     ParentId: folderId,
-                    Recursive: false,
-                    Limit: 200
-                });
-
-                apiClient.getJSON(url).then(function (result) {
+                    Recursive: false
+                }, itemsPageSize).then(function (result) {
                     loading.hide();
                     var items = result.Items || [];
 
                     if (items.length === 0) {
-                        return;
+                        if (children.length === 0) {
+                            return;
+                        }
+
+                        items = children;
                     }
 
-                    expandedFolders[folderId] = items;
+                    var mergedItems = mergeItemLists(allItems, items);
+                    expandedFolders[folderId] = mergedItems;
 
                     // 更新图标
                     if (iconElement) {
@@ -1265,7 +1262,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
                     }
 
                     // 创建子树
-                    var childTree = createItemListWithCache(view, items, items);
+                    var childTree = createItemListWithCache(view, items, mergedItems);
                     childTree.style.paddingLeft = '20px';
                     liElement.appendChild(childTree);
                 }).catch(function(err) {
@@ -1363,7 +1360,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             listItem.appendChild(listItemBody);
 
             // 添加删除按钮（只对外部字幕显示）
-            if (sub.IsExternal && sub.Path) {
+            if (sub.IsExternal && (sub.Path || sub.Index !== undefined)) {
                 var deleteBtn = document.createElement('button');
                 deleteBtn.type = 'button';
                 deleteBtn.className = 'paper-icon-button-light';
@@ -1394,10 +1391,19 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             loading.show();
             var apiClient = getApiClient();
 
-            var url = apiClient.getUrl('/SubtitleManager/DeleteSubtitle', {
-                ItemId: item.Id,
-                SubtitlePath: subtitle.Path
-            });
+            var deleteQuery = {
+                ItemId: item.Id
+            };
+
+            if (subtitle.Index !== undefined && subtitle.Index !== null) {
+                deleteQuery.SubtitleIndex = subtitle.Index;
+            }
+
+            if (subtitle.Path) {
+                deleteQuery.SubtitlePath = subtitle.Path;
+            }
+
+            var url = apiClient.getUrl('/SubtitleManager/DeleteSubtitle', deleteQuery);
 
             // 使用 fetch 发送 POST 请求
             fetch(url, {
@@ -1461,6 +1467,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
                             Language: s.Language,
                             DisplayLanguage: s.DisplayLanguage || s.Language,
                             Path: s.Path,
+                            Index: s.Index,
                             IsForced: s.IsForced,
                             IsExternal: s.IsExternal
                         };
@@ -1584,9 +1591,15 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
 
         // 绑定搜索按钮
         view.querySelector('#btnSearch').addEventListener('click', function () {
-            expandedFolders = {}; // 清空展开状态
-            itemsCache = {}; // 清空媒体项缓存
+            selectedItemId = null;
+            expandedFolders = {};
+            itemsCache = {};
+            setFieldDescription(view.querySelector('#currentSubtitles'), 'selectMediaToViewSubtitles');
             searchMedia(view);
+        });
+
+        view.querySelector('#selectLibrary').addEventListener('change', function () {
+            resetMediaState(view);
         });
 
         // 绑定选择文件按钮
@@ -1616,7 +1629,10 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
         // 支持回车搜索
         view.querySelector('#searchBox').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
-                expandedFolders = {}; // 清空展开状态
+                selectedItemId = null;
+                expandedFolders = {};
+                itemsCache = {};
+                setFieldDescription(view.querySelector('#currentSubtitles'), 'selectMediaToViewSubtitles');
                 searchMedia(view);
             }
         });
