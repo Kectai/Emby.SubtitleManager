@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.3.4 - 2026-05-10
+
 ### 安全
 
 - 将插件 ID 从模板占位 GUID 更换为一次性生成的稳定 GUID。
@@ -19,6 +21,14 @@
 - 媒体库列表改用 Emby 用户视图接口，避免为获取媒体库而遍历整个媒体库树。
 - 媒体项接口增加 `SearchTerm` 支持，前端搜索和列表加载增加分页加载能力；子文件夹展开时也按页拉取完整子树，避免大目录被固定 `Limit` 截断。
 - extras 文件夹缓存增加容量上限，并改为直接调用 Emby `GetExtras` API。
+- 统一插件入口和后端 API 的语言归一化逻辑，并将 English (United Kingdom) 作为独立语言代码处理。
+- 字幕上传语言选项保留通用 `zh` 中文，使用 `zh-Hans` / `zh-Hant` 表达简体中文和繁体中文，并保留 Emby 可识别的 `zh-HK` 香港繁体标签。
+- 统一字幕语言选项的英文显示名称，使用 `Chinese Simplified`、`Chinese Traditional`、`Chinese Traditional (Hong Kong)` 这类 Emby 风格命名。
+- 移除前端控制台错误打印和后端上传、删除成功日志，减少不必要的日志噪音。
+
+### 文档
+
+- 安装说明补充插件更新后可能需要清理浏览器缓存或强制刷新 Emby Web 页面。
 
 ## v1.3.3 - 2026-05-09
 
