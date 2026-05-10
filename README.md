@@ -89,6 +89,8 @@ Linux:   /var/lib/emby/plugins/
 4. 启动或重启 Emby Server。
 5. 在 Emby Web 主菜单中打开“字幕管理器”。
 
+更新插件后，如果 Emby Web 仍显示旧页面或旧文本，请清理浏览器缓存，或对 Emby Web 页面执行强制刷新后再打开插件。
+
 Linux 示例：
 
 ```bash
@@ -121,9 +123,11 @@ Restart-Service EmbyServer
 示例：
 
 ```text
-Example.Movie.zh-CN.srt
+Example.Movie.zh-Hans.srt
+Example.Movie.zh-Hant.srt
+Example.Movie.zh.srt
 Example.Movie.en.srt
-Example.Movie.zh.forced.srt
+Example.Movie.zh-Hans.forced.srt
 ```
 
 字幕保存到 Emby 元数据目录，而不是原始媒体目录。这样可以减少对媒体库文件夹写权限的依赖，也便于由 Emby 统一识别字幕流。

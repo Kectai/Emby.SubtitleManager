@@ -67,10 +67,10 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             errorTitle: 'Error',
             seasonNumber: 'Season {number}',
             seasonWords: ['season'],
-            langZh: 'Chinese Simplified',
-            langZhCn: 'Chinese Simplified (China)',
-            langZhTw: 'Chinese Traditional (Taiwan)',
-            langZhHk: 'Chinese Traditional (Hong Kong)',
+            langZh: 'Chinese',
+            langZhHans: 'Chinese Simplified',
+            langZhHant: 'Chinese Traditional',
+            langZhHantHk: 'Chinese Traditional (Hong Kong)',
             langEn: 'English',
             langJa: 'Japanese',
             langKo: 'Korean',
@@ -135,10 +135,10 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             errorTitle: '错误',
             seasonNumber: '第 {number} 季',
             seasonWords: ['季', 'season'],
-            langZh: '简体中文',
-            langZhCn: '简体中文(中国)',
-            langZhTw: '繁体中文(台湾)',
-            langZhHk: '繁体中文(香港)',
+            langZh: '中文',
+            langZhHans: '简体中文',
+            langZhHant: '繁体中文',
+            langZhHantHk: '繁体中文（香港）',
             langEn: '英语',
             langJa: '日语',
             langKo: '韩语',
@@ -203,10 +203,10 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             errorTitle: '錯誤',
             seasonNumber: '第 {number} 季',
             seasonWords: ['季', 'season'],
-            langZh: '簡體中文',
-            langZhCn: '簡體中文（中國）',
-            langZhTw: '繁體中文（台灣）',
-            langZhHk: '繁體中文（香港）',
+            langZh: '中文',
+            langZhHans: '簡體中文',
+            langZhHant: '繁體中文',
+            langZhHantHk: '繁體中文（香港）',
             langEn: '英文',
             langJa: '日文',
             langKo: '韓文',
@@ -271,10 +271,10 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             errorTitle: '錯誤',
             seasonNumber: '第 {number} 季',
             seasonWords: ['季', 'season'],
-            langZh: '簡體中文',
-            langZhCn: '簡體中文（中國）',
-            langZhTw: '繁體中文（台灣）',
-            langZhHk: '繁體中文（香港）',
+            langZh: '中文',
+            langZhHans: '簡體中文',
+            langZhHant: '繁體中文',
+            langZhHantHk: '繁體中文（香港）',
             langEn: '英文',
             langJa: '日文',
             langKo: '韓文',
@@ -339,10 +339,10 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             errorTitle: 'エラー',
             seasonNumber: 'シーズン {number}',
             seasonWords: ['シーズン', 'season'],
-            langZh: '簡体字中国語',
-            langZhCn: '簡体字中国語（中国）',
-            langZhTw: '繁体字中国語（台湾）',
-            langZhHk: '繁体字中国語（香港）',
+            langZh: '中国語',
+            langZhHans: '中国語（簡体字）',
+            langZhHant: '中国語（繁体字）',
+            langZhHantHk: '中国語（繁体字、香港）',
             langEn: '英語',
             langJa: '日本語',
             langKo: '韓国語',
@@ -407,10 +407,10 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             errorTitle: '오류',
             seasonNumber: '시즌 {number}',
             seasonWords: ['시즌', 'season'],
-            langZh: '중국어 간체',
-            langZhCn: '중국어 간체(중국)',
-            langZhTw: '중국어 번체(대만)',
-            langZhHk: '중국어 번체(홍콩)',
+            langZh: '중국어',
+            langZhHans: '중국어 간체',
+            langZhHant: '중국어 번체',
+            langZhHantHk: '중국어 번체(홍콩)',
             langEn: '영어',
             langJa: '일본어',
             langKo: '한국어',
@@ -419,7 +419,10 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             langEs: '스페인어'
         }
     };
-    translations['en-GB'] = translations['en-US'];
+    translations['en-GB'] = {};
+    Object.keys(translations['en-US']).forEach(function (key) {
+        translations['en-GB'][key] = translations['en-US'][key];
+    });
 
     // 获取API客户端
     function getApiClient() {
@@ -507,7 +510,6 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
         }).catch(function (error) {
             currentCulture = 'en-US';
             applyTranslations(view);
-            console.error('Failed to load plugin localization:', error);
         });
     }
 
@@ -661,7 +663,6 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             }
         }).catch(function (error) {
             loading.hide();
-            console.error('加载媒体库失败:', error);
             showMessage(t('loadLibrariesFailed', { message: error.message }), true);
         });
     }
@@ -841,7 +842,6 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
 
                     appendItemsToTree(view, treeContainer, rootItems);
                 }).catch(function(error) {
-                    console.error('获取完整树失败，降级显示:', error);
                     // 降级：显示原始结果
                     appendItemsToTree(view, treeContainer, items);
                     appendLoadMoreButton(view, treeContainer, startIndex + items.length, totalRecordCount, function () {
@@ -857,7 +857,6 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             }
         }).catch(function (error) {
             loading.hide();
-            console.error('加载媒体失败:', error);
             showMessage(t('loadMediaFailed', { message: error.message }), true);
         });
     }
@@ -900,7 +899,6 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             });
         }).catch(function (error) {
             loading.hide();
-            console.error('搜索媒体失败:', error);
             showMessage(t('searchMediaFailed', { message: error.message }), true);
         });
     }
@@ -1063,7 +1061,6 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             liElement.appendChild(childTree);
         }).catch(function (error) {
             loading.hide();
-            console.error('加载子项失败:', error);
             showMessage(t('loadChildrenFailed', { message: error.message }), true);
         });
     }
@@ -1428,7 +1425,6 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
                 }
             }).catch(function(error) {
                 loading.hide();
-                console.error('删除字幕失败:', error);
                 showMessage(t('deleteSubtitleFailed', { message: error.message }), true);
             });
         });
@@ -1481,7 +1477,6 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
             showCurrentSubtitles(view, item);
         }).catch(function(error) {
             loading.hide();
-            console.error('重新加载失败:', error);
             showMessage(t('refreshSubtitlesFailed'), true);
         });
     }
@@ -1564,7 +1559,6 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select'], func
                         showMessage(t('uploadSubtitleFailed', { message: response.Message || t('unknownError') }), true);
                     }
                 } catch (e) {
-                    console.error('解析响应失败:', e);
                     showMessage(t('parseResponseFailed', { message: e.message }), true);
                 }
             } else {

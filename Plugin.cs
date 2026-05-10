@@ -98,41 +98,7 @@ namespace Emby.SubtitleManager
 
         private string GetPluginCulture()
         {
-            return NormalizeCulture(_serverConfigurationManager?.Configuration?.UICulture);
-        }
-
-        private static string NormalizeCulture(string culture)
-        {
-            var normalized = (culture ?? string.Empty).Replace('_', '-').ToLowerInvariant();
-
-            if (normalized == "zh-cn" || normalized == "zh-sg" || normalized == "zh-hans" || normalized == "zh" ||
-                normalized.Contains("simplified"))
-            {
-                return "zh-CN";
-            }
-
-            if (normalized == "zh-hk" || normalized == "zh-hant-hk" || normalized.Contains("hong kong"))
-            {
-                return "zh-HK";
-            }
-
-            if (normalized == "zh-tw" || normalized == "zh-mo" || normalized == "zh-hant" ||
-                normalized.Contains("traditional"))
-            {
-                return "zh-TW";
-            }
-
-            if (normalized == "ja" || normalized == "ja-jp" || normalized.Contains("japanese"))
-            {
-                return "ja";
-            }
-
-            if (normalized == "ko" || normalized == "ko-kr" || normalized.Contains("korean"))
-            {
-                return "ko";
-            }
-
-            return "en-US";
+            return CultureHelper.Normalize(_serverConfigurationManager?.Configuration?.UICulture);
         }
     }
 }

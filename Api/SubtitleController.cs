@@ -158,32 +158,31 @@ namespace Emby.SubtitleManager.Api
             "vtt",
             "sub"
         };
+        private static readonly Dictionary<string, string> EnglishServerMessages = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "adminRequired", "Administrator access is required" },
+            { "subtitleFileRequired", "Subtitle file is required" },
+            { "subtitleFileEmpty", "Subtitle file is empty" },
+            { "subtitleFileTooLarge", "Subtitle file exceeds the 20 MB limit" },
+            { "invalidLanguageCode", "Invalid subtitle language code" },
+            { "invalidSubtitleFormat", "Invalid subtitle format. Supported formats: srt, ass, ssa, vtt, sub" },
+            { "itemNotFound", "The specified media item was not found" },
+            { "itemNotVideo", "The specified media item is not a video" },
+            { "metadataPathMissing", "Unable to get the media metadata directory" },
+            { "invalidSubtitleSavePath", "Invalid subtitle save path" },
+            { "duplicateSubtitle", "A subtitle with the same name already exists. Delete the existing subtitle before uploading a replacement." },
+            { "uploadSuccess", "Subtitle uploaded successfully" },
+            { "uploadFailed", "Upload failed: {0}" },
+            { "subtitlePathRequired", "Subtitle path is required" },
+            { "deleteExternalOnly", "Only external subtitles detected for this media item in its Emby metadata directory can be deleted" },
+            { "subtitleFileMissing", "Subtitle file does not exist" },
+            { "deleteSuccess", "Subtitle deleted successfully" },
+            { "deleteFailed", "Delete failed: {0}" }
+        };
         private static readonly Dictionary<string, Dictionary<string, string>> ServerMessages = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase)
         {
-            {
-                "en-US",
-                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-                {
-                    { "adminRequired", "Administrator access is required" },
-                    { "subtitleFileRequired", "Subtitle file is required" },
-                    { "subtitleFileEmpty", "Subtitle file is empty" },
-                    { "subtitleFileTooLarge", "Subtitle file exceeds the 20 MB limit" },
-                    { "invalidLanguageCode", "Invalid subtitle language code" },
-                    { "invalidSubtitleFormat", "Invalid subtitle format. Supported formats: srt, ass, ssa, vtt, sub" },
-                    { "itemNotFound", "The specified media item was not found" },
-                    { "itemNotVideo", "The specified media item is not a video" },
-                    { "metadataPathMissing", "Unable to get the media metadata directory" },
-                    { "invalidSubtitleSavePath", "Invalid subtitle save path" },
-                    { "duplicateSubtitle", "A subtitle with the same name already exists. Delete the existing subtitle before uploading a replacement." },
-                    { "uploadSuccess", "Subtitle uploaded successfully" },
-                    { "uploadFailed", "Upload failed: {0}" },
-                    { "subtitlePathRequired", "Subtitle path is required" },
-                    { "deleteExternalOnly", "Only external subtitles detected for this media item in its Emby metadata directory can be deleted" },
-                    { "subtitleFileMissing", "Subtitle file does not exist" },
-                    { "deleteSuccess", "Subtitle deleted successfully" },
-                    { "deleteFailed", "Delete failed: {0}" }
-                }
-            },
+            { "en-US", EnglishServerMessages },
+            { "en-GB", new Dictionary<string, string>(EnglishServerMessages, StringComparer.OrdinalIgnoreCase) },
             {
                 "zh-CN",
                 new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -439,8 +438,6 @@ namespace Emby.SubtitleManager.Api
 
                 await video.RefreshMetadata(refreshOptions, CancellationToken.None);
 
-                _logger.Info(string.Format("字幕上传成功 - ItemId: {0}, Language: {1}", request.ItemId, language));
-
                 return new UploadSubtitleResponse
                 {
                     Success = true,
@@ -538,8 +535,6 @@ namespace Emby.SubtitleManager.Api
 
                 await video.RefreshMetadata(refreshOptions, CancellationToken.None);
 
-                _logger.Info(string.Format("字幕删除成功 - ItemId: {0}", request.ItemId));
-
                 return new DeleteSubtitleResponse
                 {
                     Success = true,
@@ -569,7 +564,7 @@ namespace Emby.SubtitleManager.Api
 
             return new LocalizationResponse
             {
-                Culture = NormalizeCulture(rawCulture)
+                Culture = Emby.SubtitleManager.CultureHelper.Normalize(rawCulture)
             };
         }
 
@@ -969,51 +964,7 @@ namespace Emby.SubtitleManager.Api
 
         private string GetPluginCulture()
         {
-            return NormalizeCulture(GetRawCulture());
-        }
-
-        private static string NormalizeCulture(string culture)
-        {
-            var normalized = (culture ?? string.Empty).Replace('_', '-').ToLowerInvariant();
-
-            if (normalized == "zh-cn" || normalized == "zh-sg" || normalized == "zh-hans" || normalized == "zh" ||
-                normalized.Contains("simplified"))
-            {
-                return "zh-CN";
-            }
-
-            if (normalized == "zh-hk" || normalized == "zh-hant-hk" || normalized.Contains("hong kong"))
-            {
-                return "zh-HK";
-            }
-
-            if (normalized == "zh-tw" || normalized == "zh-mo" || normalized == "zh-hant" ||
-                normalized.Contains("traditional"))
-            {
-                return "zh-TW";
-            }
-
-            if (normalized == "en-gb" || normalized == "en-uk" || normalized.Contains("united kingdom"))
-            {
-                return "en-GB";
-            }
-
-            if (normalized == "ja" || normalized == "ja-jp" || normalized.Contains("japanese"))
-            {
-                return "ja";
-            }
-
-            if (normalized == "ko" || normalized == "ko-kr" || normalized.Contains("korean"))
-            {
-                return "ko";
-            }
-
-            if (normalized == "en" || normalized == "en-us" || normalized.Contains("english"))
-            {
-                return "en-US";
-            }
-
-            return "en-US";
+            return Emby.SubtitleManager.CultureHelper.Normalize(GetRawCulture());
         }
 
         private string L(string key, params object[] args)

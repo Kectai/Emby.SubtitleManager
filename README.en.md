@@ -89,6 +89,8 @@ Installation steps:
 4. Start or restart Emby Server.
 5. Open `Subtitle Manager` from the Emby Web main menu.
 
+After updating the plugin, if Emby Web still shows the old page or old text, clear the browser cache or force-refresh the Emby Web page before opening the plugin again.
+
 Linux example:
 
 ```bash
@@ -121,9 +123,11 @@ VideoFileName.language-code[.forced].format
 Examples:
 
 ```text
-Example.Movie.zh-CN.srt
+Example.Movie.zh-Hans.srt
+Example.Movie.zh-Hant.srt
+Example.Movie.zh.srt
 Example.Movie.en.srt
-Example.Movie.zh.forced.srt
+Example.Movie.zh-Hans.forced.srt
 ```
 
 Subtitles are saved to Emby's metadata directory instead of the original media directory. This reduces the need for write access to media library folders and lets Emby manage subtitle stream detection.
