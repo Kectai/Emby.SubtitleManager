@@ -1120,8 +1120,12 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select', 'emby
 
                 } else {
                     // 文件夹但无子项，显示为普通项
+                    var indent = document.createElement('span');
+                    indent.className = 'mediaTreeIndent';
+                    itemDiv.appendChild(indent);
+
                     var folderIcon = document.createElement('i');
-                    folderIcon.className = 'md-icon mediaTreeIcon mediaTreeIconIndented';
+                    folderIcon.className = 'md-icon mediaTreeIcon';
                     folderIcon.textContent = getMediaIcon(item.Type);
                     itemDiv.appendChild(folderIcon);
 
@@ -1132,8 +1136,12 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select', 'emby
                 }
             } else {
                 // 叶子节点（视频等）
+                var indent = document.createElement('span');
+                indent.className = 'mediaTreeIndent';
+                itemDiv.appendChild(indent);
+
                 var mediaIcon = document.createElement('i');
-                mediaIcon.className = 'md-icon mediaTreeIcon mediaTreeIconIndented';
+                mediaIcon.className = 'md-icon mediaTreeIcon';
                 mediaIcon.textContent = getMediaIcon(item.Type);
                 itemDiv.appendChild(mediaIcon);
 
