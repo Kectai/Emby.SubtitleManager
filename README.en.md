@@ -12,10 +12,6 @@ Emby Subtitle Manager is an Emby Server plugin for viewing, uploading, and delet
 
 Uploaded subtitles are saved to the video's internal Emby metadata directory. After an upload or deletion, the plugin refreshes media metadata so Emby can detect the updated subtitle streams.
 
-## AI Development Notice
-
-The code, documentation, icon, and project organization for this repository were developed and completed by AI. Human involvement focused on requirements, testing, review, and project management.
-
 ## Features
 
 - Media library browsing: browse movies, series, seasons, folders, and extras videos in a hierarchical tree with paged loading.
@@ -181,3 +177,7 @@ Version history is maintained in [CHANGELOG.md](CHANGELOG.md).
 ## License
 
 This project is licensed under the MIT License. Unless otherwise stated, repository code, documentation, and icon assets are released under this license.
+
+## AI Development Notice
+
+The code, documentation, icon, and project organization for this repository were developed and completed by AI. Human involvement focused on requirements, testing, review, and project management.
