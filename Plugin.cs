@@ -26,7 +26,7 @@ namespace Emby.SubtitleManager
 
         public override string Name => GetPluginTitle();
 
-        public override Guid Id => Guid.Parse("A1B2C3D4-E5F6-4A5B-9C8D-1E2F3A4B5C6D");
+        public override Guid Id => Guid.Parse("944151CB-7308-487B-8023-3E5C352BC545");
 
         public override string Description => GetPluginDescription();
 

@@ -15,6 +15,7 @@ using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Globalization;
 using MediaBrowser.Model.IO;
+using MediaBrowser.Model.Library;
 using MediaBrowser.Model.Logging;
 using MediaBrowser.Model.Services;
 
@@ -50,8 +51,11 @@ namespace Emby.SubtitleManager.Api
         [ApiMember(Name = "ItemId", Description = "媒体项ID", IsRequired = true, DataType = "string", ParameterType = "query")]
         public string ItemId { get; set; }
 
-        [ApiMember(Name = "SubtitlePath", Description = "字幕文件路径", IsRequired = true, DataType = "string", ParameterType = "query")]
+        [ApiMember(Name = "SubtitlePath", Description = "字幕文件路径", IsRequired = false, DataType = "string", ParameterType = "query")]
         public string SubtitlePath { get; set; }
+
+        [ApiMember(Name = "SubtitleIndex", Description = "字幕流索引", IsRequired = false, DataType = "int", ParameterType = "query")]
+        public int? SubtitleIndex { get; set; }
     }
 
     public class DeleteSubtitleResponse
@@ -97,6 +101,9 @@ namespace Emby.SubtitleManager.Api
 
         [ApiMember(Name = "IncludeSubtitles", Description = "是否包含字幕流信息", IsRequired = false, DataType = "bool", ParameterType = "query")]
         public bool IncludeSubtitles { get; set; }
+
+        [ApiMember(Name = "SearchTerm", Description = "搜索关键词", IsRequired = false, DataType = "string", ParameterType = "query")]
+        public string SearchTerm { get; set; }
     }
 
     public class ItemsResponse
@@ -120,6 +127,7 @@ namespace Emby.SubtitleManager.Api
         public string Language { get; set; }
         public string DisplayLanguage { get; set; }
         public string Path { get; set; }
+        public int? Index { get; set; }
         public bool IsForced { get; set; }
         public bool IsExternal { get; set; }
     }
@@ -138,6 +146,7 @@ namespace Emby.SubtitleManager.Api
     public class SubtitleController : IService, IRequiresRequest
     {
         private const long MaxSubtitleFileSizeBytes = 20 * 1024 * 1024;
+        private const int MaxExtrasCacheEntries = 512;
         private static readonly TimeSpan ExtrasCacheLifetime = TimeSpan.FromMinutes(30);
         private static readonly StringComparison PathComparison = GetPathComparison();
         private static readonly Regex LanguageCodeRegex = new Regex("^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*$", RegexOptions.Compiled);
@@ -298,6 +307,7 @@ namespace Emby.SubtitleManager.Api
         };
 
         private readonly ILibraryManager _libraryManager;
+        private readonly IUserViewManager _userViewManager;
         private readonly IFileSystem _fileSystem;
         private readonly ILogger _logger;
         private readonly ILocalizationManager _localizationManager;
@@ -309,6 +319,7 @@ namespace Emby.SubtitleManager.Api
 
         public SubtitleController(
             ILibraryManager libraryManager,
+            IUserViewManager userViewManager,
             IFileSystem fileSystem,
             ILogManager logManager,
             ILocalizationManager localizationManager,
@@ -317,6 +328,7 @@ namespace Emby.SubtitleManager.Api
             IServerConfigurationManager serverConfigurationManager)
         {
             _libraryManager = libraryManager;
+            _userViewManager = userViewManager;
             _fileSystem = fileSystem;
             _logger = logManager.GetLogger("SubtitleManager");
             _localizationManager = localizationManager;
@@ -329,14 +341,7 @@ namespace Emby.SubtitleManager.Api
         {
             try
             {
-                if (!IsAdministratorRequest())
-                {
-                    return new UploadSubtitleResponse
-                    {
-                        Success = false,
-                        Message = L("adminRequired")
-                    };
-                }
+                EnsureAdministratorRequest();
 
                 var validationError = ValidateUploadRequest(request, out var language, out var format);
                 if (!string.IsNullOrEmpty(validationError))
@@ -413,21 +418,11 @@ namespace Emby.SubtitleManager.Api
                     };
                 }
 
-                // 保存字幕文件
-                var bytesWritten = 0L;
-                try
-                {
-                    bytesWritten = await SaveSubtitleStream(request.RequestStream, subtitlePath).ConfigureAwait(false);
-                }
-                catch
-                {
-                    TryDeleteFile(subtitlePath);
-                    throw;
-                }
+                // 保存到同目录临时文件，再移动到目标路径，避免并发上传时误删已完成的字幕。
+                var bytesWritten = await SaveSubtitleStream(request.RequestStream, subtitlePath, metadataPath).ConfigureAwait(false);
 
                 if (bytesWritten == 0)
                 {
-                    TryDeleteFile(subtitlePath);
                     return new UploadSubtitleResponse
                     {
                         Success = false,
@@ -452,6 +447,18 @@ namespace Emby.SubtitleManager.Api
                     Message = L("uploadSuccess")
                 };
             }
+            catch (MediaBrowser.Controller.Net.SecurityException)
+            {
+                throw;
+            }
+            catch (InvalidOperationException ex) when (HasServerMessage(ex.Message))
+            {
+                return new UploadSubtitleResponse
+                {
+                    Success = false,
+                    Message = L(ex.Message)
+                };
+            }
             catch (Exception ex)
             {
                 _logger.ErrorException("上传字幕时发生错误: " + ex.Message, ex);
@@ -467,16 +474,9 @@ namespace Emby.SubtitleManager.Api
         {
             try
             {
-                if (!IsAdministratorRequest())
-                {
-                    return new DeleteSubtitleResponse
-                    {
-                        Success = false,
-                        Message = L("adminRequired")
-                    };
-                }
+                EnsureAdministratorRequest();
 
-                if (string.IsNullOrWhiteSpace(request.SubtitlePath))
+                if (string.IsNullOrWhiteSpace(request.SubtitlePath) && !request.SubtitleIndex.HasValue)
                 {
                     return new DeleteSubtitleResponse
                     {
@@ -506,7 +506,7 @@ namespace Emby.SubtitleManager.Api
                     };
                 }
 
-                var validSubtitlePath = GetValidatedExternalSubtitlePath(video, request.SubtitlePath);
+                var validSubtitlePath = GetValidatedExternalSubtitlePath(video, request.SubtitlePath, request.SubtitleIndex);
                 if (string.IsNullOrEmpty(validSubtitlePath))
                 {
                     return new DeleteSubtitleResponse
@@ -546,6 +546,10 @@ namespace Emby.SubtitleManager.Api
                     Message = L("deleteSuccess")
                 };
             }
+            catch (MediaBrowser.Controller.Net.SecurityException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.ErrorException("删除字幕时发生错误: " + ex.Message, ex);
@@ -559,13 +563,7 @@ namespace Emby.SubtitleManager.Api
 
         public object Get(GetLocalizationRequest request)
         {
-            if (!IsAdministratorRequest())
-            {
-                return new LocalizationResponse
-                {
-                    Culture = "en-US"
-                };
-            }
+            EnsureAdministratorRequest();
 
             var rawCulture = GetRawCulture();
 
@@ -579,22 +577,22 @@ namespace Emby.SubtitleManager.Api
         {
             try
             {
-                if (!IsAdministratorRequest())
-                {
-                    return new LibrariesResponse
-                    {
-                        Libraries = new LibraryInfo[0]
-                    };
-                }
+                EnsureAdministratorRequest();
 
-                var children = _libraryManager.RootFolder.GetRecursiveChildren();
-                var libraries = children
-                    .OfType<CollectionFolder>()
+                var auth = _authorizationContext.GetAuthorizationInfo(Request);
+                var userViews = _userViewManager.GetUserViews(new UserViewQuery
+                {
+                    UserId = auth.UserId,
+                    IncludeExternalContent = false,
+                    IncludeHidden = false
+                });
+
+                var libraries = userViews
                     .Select(i => new LibraryInfo
                     {
                         Id = i.Id.ToString().Replace("-", ""),
                         Name = i.Name,
-                        CollectionType = i.CollectionType
+                        CollectionType = GetPropertyValue(i, "CollectionType")
                     })
                     .ToArray();
 
@@ -602,6 +600,10 @@ namespace Emby.SubtitleManager.Api
                 {
                     Libraries = libraries
                 };
+            }
+            catch (MediaBrowser.Controller.Net.SecurityException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -621,14 +623,7 @@ namespace Emby.SubtitleManager.Api
         {
             try
             {
-                if (!IsAdministratorRequest())
-                {
-                    return new ItemsResponse
-                    {
-                        Items = new MediaItemInfo[0],
-                        TotalRecordCount = 0
-                    };
-                }
+                EnsureAdministratorRequest();
 
                 // 检查是否在查询虚拟的 extras 文件夹
                 if (!string.IsNullOrEmpty(request.ParentId))
@@ -636,7 +631,7 @@ namespace Emby.SubtitleManager.Api
                     if (TryGetExtrasFolderVideos(request.ParentId, out var videos))
                     {
                         // 这是一个 extras 文件夹查询，返回该文件夹中的视频
-                        return GetExtrasInFolder(request.ParentId, videos);
+                        return GetExtrasInFolder(request.ParentId, videos, request.StartIndex, request.Limit);
                     }
                 }
 
@@ -644,7 +639,8 @@ namespace Emby.SubtitleManager.Api
                 {
                     Recursive = request.Recursive,
                     StartIndex = request.StartIndex,
-                    Limit = request.Limit
+                    Limit = request.Limit,
+                    SearchTerm = string.IsNullOrWhiteSpace(request.SearchTerm) ? null : request.SearchTerm.Trim()
                 };
 
                 // 如果指定了 IncludeItemTypes，使用指定的类型；否则不限制类型（显示所有项目包括文件夹）
@@ -705,6 +701,10 @@ namespace Emby.SubtitleManager.Api
                     TotalRecordCount = result.TotalRecordCount + (items.Count - result.Items.Length)
                 };
             }
+            catch (MediaBrowser.Controller.Net.SecurityException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.ErrorException("获取媒体项列表时发生错误: " + ex.Message, ex);
@@ -759,18 +759,9 @@ namespace Emby.SubtitleManager.Api
 
                 try
                 {
-                    // 使用反射调用 GetExtras() 方法
                     // 必须传入所有 ExtraType 枚举值才能获取所有附加篇
-                    var getExtrasMethod = movieItem.GetType().GetMethod("GetExtras", new Type[] { typeof(MediaBrowser.Model.Entities.ExtraType[]) });
-                    if (getExtrasMethod == null)
-                    {
-                        continue;
-                    }
-
-                    // 获取所有 ExtraType 枚举值
                     var allExtraTypes = (MediaBrowser.Model.Entities.ExtraType[])Enum.GetValues(typeof(MediaBrowser.Model.Entities.ExtraType));
-
-                    var extras = getExtrasMethod.Invoke(movieItem, new object[] { allExtraTypes }) as BaseItem[];
+                    var extras = movieItem.GetExtras(allExtraTypes);
                     if (extras == null)
                     {
                         continue;
@@ -866,12 +857,13 @@ namespace Emby.SubtitleManager.Api
                         LastAccessUtc = DateTime.UtcNow
                     };
                 }
+                PruneOverflowExtrasCache();
             }
 
             return extrasFolders;
         }
 
-        private ItemsResponse GetExtrasInFolder(string parentId, List<BaseItem> videos)
+        private ItemsResponse GetExtrasInFolder(string parentId, List<BaseItem> videos, int? startIndex, int? limit)
         {
             try
             {
@@ -886,8 +878,16 @@ namespace Emby.SubtitleManager.Api
                     };
                 }
 
+                var totalRecordCount = videos.Count;
+                var start = Math.Max(0, startIndex.GetValueOrDefault());
+                var queryVideos = videos.Skip(start);
+                if (limit.HasValue && limit.Value >= 0)
+                {
+                    queryVideos = queryVideos.Take(limit.Value);
+                }
+
                 // 转换为 MediaItemInfo（使用真实的 Emby ItemId）
-                foreach (var video in videos)
+                foreach (var video in queryVideos)
                 {
                     items.Add(new MediaItemInfo
                     {
@@ -903,7 +903,7 @@ namespace Emby.SubtitleManager.Api
                 return new ItemsResponse
                 {
                     Items = items.ToArray(),
-                    TotalRecordCount = items.Count
+                    TotalRecordCount = totalRecordCount
                 };
             }
             catch (Exception ex)
@@ -931,6 +931,7 @@ namespace Emby.SubtitleManager.Api
                     Language = s.Language,
                     DisplayLanguage = _localizationManager.GetLocalizedString(s.Language),
                     Path = s.Path,
+                    Index = s.Index,
                     IsForced = s.IsForced,
                     IsExternal = s.IsExternal
                 })
@@ -1036,6 +1037,14 @@ namespace Emby.SubtitleManager.Api
             return HasServerMessage(message) ? L(message) : message;
         }
 
+        private void EnsureAdministratorRequest()
+        {
+            if (!IsAdministratorRequest())
+            {
+                throw new MediaBrowser.Controller.Net.SecurityException(L("adminRequired"));
+            }
+        }
+
         private static string ValidateUploadRequest(UploadSubtitleRequest request, out string language, out string format)
         {
             language = request == null ? null : (request.Language ?? string.Empty).Trim();
@@ -1102,40 +1111,80 @@ namespace Emby.SubtitleManager.Api
             }
         }
 
-        private static async Task<long> SaveSubtitleStream(Stream source, string subtitlePath)
+        private static async Task<long> SaveSubtitleStream(Stream source, string subtitlePath, string metadataPath)
         {
             var buffer = new byte[81920];
             var totalBytes = 0L;
+            var tempPath = Path.Combine(
+                metadataPath,
+                "." + Path.GetFileName(subtitlePath) + "." + Guid.NewGuid().ToString("N") + ".tmp");
+            var tempFileCreated = false;
 
-            using (var fileStream = new FileStream(subtitlePath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            try
             {
-                int bytesRead;
-                while ((bytesRead = await source.ReadAsync(buffer, 0, buffer.Length).ConfigureAwait(false)) > 0)
+                using (var fileStream = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
                 {
-                    totalBytes += bytesRead;
-                    if (totalBytes > MaxSubtitleFileSizeBytes)
+                    tempFileCreated = true;
+
+                    int bytesRead;
+                    while ((bytesRead = await source.ReadAsync(buffer, 0, buffer.Length).ConfigureAwait(false)) > 0)
                     {
-                        throw new InvalidOperationException("subtitleFileTooLarge");
+                        totalBytes += bytesRead;
+                        if (totalBytes > MaxSubtitleFileSizeBytes)
+                        {
+                            throw new InvalidOperationException("subtitleFileTooLarge");
+                        }
+
+                        await fileStream.WriteAsync(buffer, 0, bytesRead).ConfigureAwait(false);
+                    }
+                }
+
+                if (totalBytes == 0)
+                {
+                    TryDeleteFile(tempPath);
+                    return 0;
+                }
+
+                try
+                {
+                    File.Move(tempPath, subtitlePath);
+                    tempFileCreated = false;
+                }
+                catch (IOException ex)
+                {
+                    if (File.Exists(subtitlePath))
+                    {
+                        throw new InvalidOperationException("duplicateSubtitle", ex);
                     }
 
-                    await fileStream.WriteAsync(buffer, 0, bytesRead).ConfigureAwait(false);
+                    throw;
+                }
+
+                return totalBytes;
+            }
+            finally
+            {
+                if (tempFileCreated)
+                {
+                    TryDeleteFile(tempPath);
                 }
             }
-
-            return totalBytes;
         }
 
-        private string GetValidatedExternalSubtitlePath(Video video, string requestedPath)
+        private string GetValidatedExternalSubtitlePath(Video video, string requestedPath, int? subtitleIndex)
         {
             var metadataPath = video.GetInternalMetadataPath();
-            if (string.IsNullOrEmpty(metadataPath) || string.IsNullOrWhiteSpace(requestedPath))
+            if (string.IsNullOrEmpty(metadataPath) ||
+                (string.IsNullOrWhiteSpace(requestedPath) && !subtitleIndex.HasValue))
             {
                 return null;
             }
 
             var matchingSubtitle = video.GetMediaStreams()
                 .Where(s => s.Type == MediaStreamType.Subtitle && s.IsExternal && !string.IsNullOrEmpty(s.Path))
-                .FirstOrDefault(s => AreSamePath(s.Path, requestedPath));
+                .FirstOrDefault(s => subtitleIndex.HasValue
+                    ? s.Index == subtitleIndex.Value
+                    : AreSamePath(s.Path, requestedPath));
 
             if (matchingSubtitle == null || !IsPathUnderDirectory(matchingSubtitle.Path, metadataPath))
             {
@@ -1246,6 +1295,25 @@ namespace Emby.SubtitleManager.Api
                 .ToArray();
 
             foreach (var key in expiredKeys)
+            {
+                _extrasFolderCache.Remove(key);
+            }
+        }
+
+        private static void PruneOverflowExtrasCache()
+        {
+            if (_extrasFolderCache.Count <= MaxExtrasCacheEntries)
+            {
+                return;
+            }
+
+            var keysToRemove = _extrasFolderCache
+                .OrderBy(kvp => kvp.Value.LastAccessUtc)
+                .Take(_extrasFolderCache.Count - MaxExtrasCacheEntries)
+                .Select(kvp => kvp.Key)
+                .ToArray();
+
+            foreach (var key in keysToRemove)
             {
                 _extrasFolderCache.Remove(key);
             }
