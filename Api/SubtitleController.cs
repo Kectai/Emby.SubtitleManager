@@ -123,6 +123,7 @@ namespace Emby.SubtitleManager.Api
         public int? IndexNumber { get; set; }
         public int? ProductionYear { get; set; }
         public DateTimeOffset? PremiereDate { get; set; }
+        public bool IsMovieFolder { get; set; }
         public SubtitleInfo[] Subtitles { get; set; }
     }
 
@@ -689,7 +690,7 @@ namespace Emby.SubtitleManager.Api
                     items.AddRange(extrasFolders);
                 }
 
-                var finalItems = items.ToArray();
+                var finalItems = SortMediaItems(items).ToArray();
 
                 return new ItemsResponse
                 {
@@ -723,6 +724,19 @@ namespace Emby.SubtitleManager.Api
 
         private MediaItemInfo CreateMediaItemInfo(BaseItem item, bool includeSubtitles, string parentIdOverride = null)
         {
+            var sortSource = item;
+            var isMovieFolder = false;
+
+            if (item.GetType().Name == "Folder" && item is Folder folder)
+            {
+                var movie = GetDirectMovieChild(folder);
+                if (movie != null)
+                {
+                    sortSource = movie;
+                    isMovieFolder = true;
+                }
+            }
+
             string parentIdStr = parentIdOverride;
             if (parentIdStr == null)
             {
@@ -738,14 +752,156 @@ namespace Emby.SubtitleManager.Api
             {
                 Id = ToItemIdString(item),
                 Name = item.Name,
-                SortName = string.IsNullOrWhiteSpace(item.SortName) ? item.Name : item.SortName,
+                SortName = string.IsNullOrWhiteSpace(sortSource.SortName) ? sortSource.Name : sortSource.SortName,
                 Type = item.GetType().Name,
                 ParentId = parentIdStr,
                 IndexNumber = item.IndexNumber,
-                ProductionYear = item.ProductionYear,
-                PremiereDate = item.PremiereDate,
+                ProductionYear = sortSource.ProductionYear,
+                PremiereDate = sortSource.PremiereDate,
+                IsMovieFolder = isMovieFolder,
                 Subtitles = includeSubtitles ? GetSubtitleInfo(item as Video) : new SubtitleInfo[0]
             };
+        }
+
+        private BaseItem GetDirectMovieChild(Folder folder)
+        {
+            try
+            {
+                var result = _libraryManager.GetItemsResult(new InternalItemsQuery
+                {
+                    Parent = folder,
+                    Recursive = false,
+                    IncludeItemTypes = new[] { "Movie" },
+                    Limit = 1,
+                    OrderBy = new[]
+                    {
+                        (ItemSortBy.SortName, SortOrder.Ascending)
+                    }
+                });
+
+                return result.Items.FirstOrDefault();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static IEnumerable<MediaItemInfo> SortMediaItems(IEnumerable<MediaItemInfo> items)
+        {
+            return items
+                .OrderBy(GetMediaItemSortGroup)
+                .ThenBy(GetMediaItemSortIndex)
+                .ThenBy(i => i.SortName ?? i.Name, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(i => IsMovieSortGroup(i) ? i.ProductionYear ?? int.MaxValue : int.MaxValue)
+                .ThenBy(i => IsMovieSortGroup(i) ? i.PremiereDate ?? DateTimeOffset.MaxValue : DateTimeOffset.MaxValue)
+                .ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(i => i.Id, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static int GetMediaItemSortGroup(MediaItemInfo item)
+        {
+            if (item.Type == "Season")
+            {
+                return item.IndexNumber.GetValueOrDefault() > 0 ? 10 : 20;
+            }
+
+            if (item.Type == "Series")
+            {
+                return 30;
+            }
+
+            if (item.Type == "CollectionFolder")
+            {
+                return 40;
+            }
+
+            if (IsMovieSortGroup(item))
+            {
+                return 50;
+            }
+
+            if (item.Type == "Episode" || item.Type == "Video" || item.Type == "Trailer" || item.Type == "MusicVideo")
+            {
+                return 55;
+            }
+
+            if (item.Type == "Folder" && item.Id != null && item.Id.StartsWith("extras_", StringComparison.Ordinal))
+            {
+                return 60;
+            }
+
+            if (item.Type == "Folder" || item.Type == "BoxSet")
+            {
+                return 70;
+            }
+
+            return 80;
+        }
+
+        private static int GetMediaItemSortIndex(MediaItemInfo item)
+        {
+            if (item.Type == "Season")
+            {
+                return item.IndexNumber.GetValueOrDefault() > 0 ? item.IndexNumber.Value : 0;
+            }
+
+            if (item.Type == "Episode")
+            {
+                return item.IndexNumber ?? int.MaxValue;
+            }
+
+            if (item.Type == "Folder" && item.Id != null && item.Id.StartsWith("extras_", StringComparison.Ordinal))
+            {
+                return GetExtrasFolderSortIndex(item.Name);
+            }
+
+            return int.MaxValue;
+        }
+
+        private static bool IsMovieSortGroup(MediaItemInfo item)
+        {
+            return item.Type == "Movie" || item.Type == "BoxSet" || item.IsMovieFolder;
+        }
+
+        private static int GetExtrasFolderSortIndex(string name)
+        {
+            switch ((name ?? string.Empty).Trim().ToLowerInvariant())
+            {
+                case "trailers":
+                case "trailer":
+                    return 10;
+                case "extras":
+                    return 20;
+                case "featurettes":
+                case "featurette":
+                    return 30;
+                case "behind the scenes":
+                    return 40;
+                case "deleted":
+                case "deleted scenes":
+                    return 50;
+                case "interviews":
+                case "interview":
+                    return 60;
+                case "scenes":
+                case "scene":
+                    return 70;
+                case "shorts":
+                case "short":
+                    return 80;
+                case "clips":
+                case "clip":
+                    return 90;
+                case "samples":
+                case "sample":
+                    return 100;
+                case "specials":
+                case "special":
+                    return 110;
+                default:
+                    return int.MaxValue;
+            }
         }
 
         private static string ToItemIdString(BaseItem item)
@@ -935,6 +1091,7 @@ namespace Emby.SubtitleManager.Api
                             IndexNumber = null,
                             ProductionYear = null,
                             PremiereDate = null,
+                            IsMovieFolder = false,
                             Subtitles = new SubtitleInfo[0]
                         });
                     }

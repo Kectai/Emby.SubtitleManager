@@ -850,28 +850,21 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select', 'emby
             return getSeasonSortInfo(item);
         }
 
-        if (isVirtualExtrasFolder(item)) {
-            return {
-                group: 30,
-                index: getExtrasFolderOrder(item)
-            };
-        }
-
         if (item.Type === 'Series') {
             return {
-                group: 40,
+                group: 30,
                 index: 999999
             };
         }
 
         if (item.Type === 'CollectionFolder') {
             return {
-                group: 45,
+                group: 40,
                 index: 999999
             };
         }
 
-        if (item.Type === 'Movie' || item.Type === 'BoxSet' || (item.Type === 'Folder' && !isVirtualExtrasFolder(item))) {
+        if (item.Type === 'Movie' || item.Type === 'BoxSet' || item.IsMovieFolder) {
             return {
                 group: 50,
                 index: 999999
@@ -882,20 +875,27 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select', 'emby
             var indexNumber = getIndexNumber(item);
 
             return {
-                group: 60,
+                group: 55,
                 index: indexNumber === null ? 999999 : indexNumber
+            };
+        }
+
+        if (isVirtualExtrasFolder(item)) {
+            return {
+                group: 60,
+                index: getExtrasFolderOrder(item)
             };
         }
 
         if (isFolder(item.Type)) {
             return {
-                group: 55,
+                group: 70,
                 index: 999999
             };
         }
 
         return {
-            group: 70,
+            group: 80,
             index: 999999
         };
     }
