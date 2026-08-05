@@ -689,12 +689,10 @@ namespace Emby.SubtitleManager.Api
                     };
                 }).ToList();
 
-                // 如果 ParentId 指向物理文件夹，补充 Emby 识别到的 extras 虚拟文件夹。
-                if (requestedParentItem != null && requestedParentItem.GetType().Name == "Folder")
+                // 补充 Emby 识别到的附加媒体虚拟文件夹。
+                if (requestedParentItem != null && ShouldSupplementExtras(requestedParentItem))
                 {
-                    var extrasSourceItems = request.Recursive
-                        ? result.Items.Where(i => IsDirectChildOf(i, requestedParentId) && i.GetType().Name == "Movie").ToArray()
-                        : result.Items;
+                    var extrasSourceItems = GetExtrasSourceItems(requestedParentItem, requestedParentId, result.Items, request.Recursive);
                     var extrasFolders = GetExtrasFolders(extrasSourceItems, requestedParentId);
                     items.AddRange(extrasFolders);
                 }
@@ -747,7 +745,54 @@ namespace Emby.SubtitleManager.Api
             return parentItem != null && string.Equals(ToItemIdString(parentItem), parentId, StringComparison.OrdinalIgnoreCase);
         }
 
-        private List<MediaItemInfo> GetExtrasFolders(BaseItem[] items, string movieParentId = null)
+        private static bool ShouldSupplementExtras(BaseItem parentItem)
+        {
+            return parentItem.GetType().Name == "Folder" || CanHaveOwnExtras(parentItem);
+        }
+
+        private static bool CanHaveOwnExtras(BaseItem item)
+        {
+            if (item == null)
+            {
+                return false;
+            }
+
+            var itemType = item.GetType().Name;
+            return itemType == "Movie" || itemType == "Series" || itemType == "Season";
+        }
+
+        private static BaseItem[] GetExtrasSourceItems(BaseItem requestedParentItem, string requestedParentId, BaseItem[] resultItems, bool recursive)
+        {
+            var sourceItems = new List<BaseItem>();
+
+            if (CanHaveOwnExtras(requestedParentItem))
+            {
+                sourceItems.Add(requestedParentItem);
+            }
+
+            if (requestedParentItem.GetType().Name == "Folder" && resultItems != null)
+            {
+                var candidates = recursive
+                    ? resultItems.Where(i => IsDirectChildOf(i, requestedParentId))
+                    : resultItems;
+
+                foreach (var candidate in candidates)
+                {
+                    var candidateType = candidate.GetType().Name;
+                    if (candidateType == "Movie" || (!recursive && candidateType == "Folder"))
+                    {
+                        sourceItems.Add(candidate);
+                    }
+                }
+            }
+
+            return sourceItems
+                .GroupBy(ToItemIdString)
+                .Select(g => g.First())
+                .ToArray();
+        }
+
+        private List<MediaItemInfo> GetExtrasFolders(BaseItem[] items, string ownerParentId = null)
         {
             var extrasFolders = new List<MediaItemInfo>();
             var globalFolderVideosMap = new Dictionary<string, List<BaseItem>>(); // 全局文件夹路径 -> 视频列表
@@ -755,14 +800,14 @@ namespace Emby.SubtitleManager.Api
 
             foreach (var item in items)
             {
-                BaseItem movieItem = null;
+                BaseItem ownerItem = null;
                 string extrasParentId = null;
 
-                // 处理 Movie 类型
-                if (item.GetType().Name == "Movie")
+                // 处理 Movie/Series/Season 自身的附加媒体。
+                if (CanHaveOwnExtras(item))
                 {
-                    movieItem = item;
-                    extrasParentId = movieParentId;
+                    ownerItem = item;
+                    extrasParentId = ownerParentId;
                 }
                 // 处理 Folder 类型：查询文件夹里是否有 Movie
                 else if (item.GetType().Name == "Folder" && item is Folder folder)
@@ -779,7 +824,7 @@ namespace Emby.SubtitleManager.Api
                     var movieInFolder = folderResult.Items.FirstOrDefault(c => c.GetType().Name == "Movie");
                     if (movieInFolder != null)
                     {
-                        movieItem = movieInFolder;
+                        ownerItem = movieInFolder;
                         extrasParentId = ToItemIdString(item);
                     }
                 }
@@ -788,14 +833,14 @@ namespace Emby.SubtitleManager.Api
                     continue;
                 }
 
-                if (movieItem == null)
+                if (ownerItem == null)
                     continue;
 
                 try
                 {
                     // 必须传入所有 ExtraType 枚举值才能获取所有附加篇
                     var allExtraTypes = (MediaBrowser.Model.Entities.ExtraType[])Enum.GetValues(typeof(MediaBrowser.Model.Entities.ExtraType));
-                    var extras = movieItem.GetExtras(allExtraTypes);
+                    var extras = ownerItem.GetExtras(allExtraTypes);
                     if (extras == null)
                     {
                         continue;
@@ -810,8 +855,8 @@ namespace Emby.SubtitleManager.Api
                         ? ToItemIdString(item)
                         : extrasParentId;
 
-                    // 将当前 Movie 的 extras 视频按文件夹分组
-                    var currentMovieFolders = new Dictionary<string, List<BaseItem>>();
+                    // 将当前条目的 extras 视频按文件夹分组
+                    var currentExtraFolders = new Dictionary<string, List<BaseItem>>();
                     foreach (var extra in extras)
                     {
                         if (string.IsNullOrEmpty(extra.Path))
@@ -823,11 +868,11 @@ namespace Emby.SubtitleManager.Api
                             continue;
 
                         // 将视频添加到当前 Movie 的文件夹列表中
-                        if (!currentMovieFolders.ContainsKey(extraFolderPath))
+                        if (!currentExtraFolders.ContainsKey(extraFolderPath))
                         {
-                            currentMovieFolders[extraFolderPath] = new List<BaseItem>();
+                            currentExtraFolders[extraFolderPath] = new List<BaseItem>();
                         }
-                        currentMovieFolders[extraFolderPath].Add(extra);
+                        currentExtraFolders[extraFolderPath].Add(extra);
 
                         // 同时添加到全局映射中（避免重复添加相同的视频）
                         if (!globalFolderVideosMap.ContainsKey(extraFolderPath))
@@ -842,8 +887,8 @@ namespace Emby.SubtitleManager.Api
                         }
                     }
 
-                    // 为当前 Movie 的每个文件夹创建虚拟 Folder MediaItemInfo
-                    foreach (var kvp in currentMovieFolders)
+                    // 为当前条目的每个 extras 文件夹创建虚拟 Folder MediaItemInfo
+                    foreach (var kvp in currentExtraFolders)
                     {
                         var extraFolderPath = kvp.Key;
                         // 检查是否已经处理过此文件夹路径（避免合并版本导致的重复）
@@ -874,7 +919,7 @@ namespace Emby.SubtitleManager.Api
                 }
                 catch (Exception ex)
                 {
-                    _logger.ErrorException($"获取 Movie extras 时发生错误: {ex.Message}", ex);
+                    _logger.ErrorException($"获取条目 extras 时发生错误: {ex.Message}", ex);
                 }
             }
 
