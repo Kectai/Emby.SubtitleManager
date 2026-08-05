@@ -692,6 +692,176 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select', 'emby
         return !!(item && item.Type === 'Folder' && typeof item.Id === 'string' && item.Id.indexOf('extras_') === 0);
     }
 
+    function normalizeSortName(name) {
+        return (name || '').toString().trim().replace(/\s+/g, ' ').toLowerCase();
+    }
+
+    function compareNames(aName, bName) {
+        var left = (aName || '').toString();
+        var right = (bName || '').toString();
+
+        try {
+            return left.localeCompare(right, currentCulture, {
+                numeric: true,
+                sensitivity: 'base'
+            });
+        } catch (error) {
+            return left.localeCompare(right);
+        }
+    }
+
+    function getIndexNumber(item) {
+        return item && typeof item.IndexNumber === 'number' ? item.IndexNumber : null;
+    }
+
+    function parseSeasonNumber(name) {
+        var normalized = normalizeSortName(name);
+        var match = normalized.match(/^(?:season|series|s)\s*0*(\d+)(?:\b|$)/);
+        if (!match) {
+            match = normalized.match(/^第\s*0*(\d+)\s*季(?:\s|$)/);
+        }
+        if (!match) {
+            match = normalized.match(/^シーズン\s*0*(\d+)(?:\s|$)/);
+        }
+        if (!match) {
+            match = normalized.match(/^시즌\s*0*(\d+)(?:\s|$)/);
+        }
+
+        return match ? parseInt(match[1], 10) : null;
+    }
+
+    function isSpecialSeasonName(name) {
+        var normalized = normalizeSortName(name);
+
+        return normalized === 'specials' ||
+            normalized === 'special' ||
+            normalized === '番外篇' ||
+            normalized === '特别篇' ||
+            normalized === '特別篇' ||
+            normalized === '特典' ||
+            normalized === 'スペシャル' ||
+            normalized === '特別編' ||
+            normalized === '스페셜' ||
+            normalized === '특별편';
+    }
+
+    function getSeasonSortInfo(item) {
+        var indexNumber = getIndexNumber(item);
+        var parsedSeasonNumber = parseSeasonNumber(item.Name);
+
+        if (indexNumber !== null) {
+            if (indexNumber > 0) {
+                return {
+                    group: 10,
+                    index: indexNumber
+                };
+            }
+
+            return {
+                group: 20,
+                index: 0
+            };
+        }
+
+        if (parsedSeasonNumber !== null) {
+            return {
+                group: parsedSeasonNumber > 0 ? 10 : 20,
+                index: parsedSeasonNumber
+            };
+        }
+
+        if (isSpecialSeasonName(item.Name)) {
+            return {
+                group: 20,
+                index: 0
+            };
+        }
+
+        return {
+            group: 15,
+            index: 999999
+        };
+    }
+
+    function getExtrasFolderOrder(item) {
+        var normalized = normalizeSortName(item.Name);
+        var order = {
+            trailers: 10,
+            trailer: 10,
+            extras: 20,
+            featurettes: 30,
+            featurette: 30,
+            'behind the scenes': 40,
+            deleted: 50,
+            'deleted scenes': 50,
+            interviews: 60,
+            interview: 60,
+            scenes: 70,
+            scene: 70,
+            shorts: 80,
+            short: 80,
+            clips: 90,
+            clip: 90,
+            samples: 100,
+            sample: 100,
+            specials: 110,
+            special: 110
+        };
+
+        return order[normalized] || 999999;
+    }
+
+    function getFolderSortInfo(item) {
+        if (item.Type === 'Season') {
+            return getSeasonSortInfo(item);
+        }
+
+        if (item.Type === 'Folder' && !isVirtualExtrasFolder(item)) {
+            var parsedSeasonNumber = parseSeasonNumber(item.Name);
+            if (parsedSeasonNumber !== null || isSpecialSeasonName(item.Name)) {
+                return getSeasonSortInfo(item);
+            }
+        }
+
+        if (isVirtualExtrasFolder(item)) {
+            return {
+                group: 30,
+                index: getExtrasFolderOrder(item)
+            };
+        }
+
+        return {
+            group: 40,
+            index: 999999
+        };
+    }
+
+    function getFileSortInfo(item) {
+        if (item.Type === 'Episode') {
+            return {
+                group: 10,
+                index: getIndexNumber(item) === null ? 999999 : getIndexNumber(item)
+            };
+        }
+
+        return {
+            group: 20,
+            index: 999999
+        };
+    }
+
+    function compareSortInfo(a, b) {
+        if (a.group !== b.group) {
+            return a.group - b.group;
+        }
+
+        if (a.index !== b.index) {
+            return a.index - b.index;
+        }
+
+        return 0;
+    }
+
     // 格式化显示名称（添加编号）
     function formatDisplayName(item) {
         var name = item.Name;
@@ -732,22 +902,21 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select', 'emby
 
             // 如果都是文件夹或都是文件，按类型和序号排序
             if (aIsFolder === bIsFolder) {
-                // Season: 按 IndexNumber 排序
-                if (a.Type === 'Season' && b.Type === 'Season') {
-                    var aIndex = a.IndexNumber !== undefined ? a.IndexNumber : 999;
-                    var bIndex = b.IndexNumber !== undefined ? b.IndexNumber : 999;
-                    return aIndex - bIndex;
+                var semanticSort = aIsFolder
+                    ? compareSortInfo(getFolderSortInfo(a), getFolderSortInfo(b))
+                    : compareSortInfo(getFileSortInfo(a), getFileSortInfo(b));
+
+                if (semanticSort !== 0) {
+                    return semanticSort;
                 }
 
-                // Episode: 按 IndexNumber 排序
-                if (a.Type === 'Episode' && b.Type === 'Episode') {
-                    var aIndex = a.IndexNumber !== undefined ? a.IndexNumber : 999;
-                    var bIndex = b.IndexNumber !== undefined ? b.IndexNumber : 999;
-                    return aIndex - bIndex;
+                // 其他：按当前界面语言做自然名称排序
+                var nameSort = compareNames(a.Name, b.Name);
+                if (nameSort !== 0) {
+                    return nameSort;
                 }
 
-                // 其他：按名称字典序
-                return a.Name.localeCompare(b.Name);
+                return compareNames(a.Id, b.Id);
             }
 
             return 0;
