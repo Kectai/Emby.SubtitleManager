@@ -688,6 +688,10 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select', 'emby
                itemType === 'BoxSet';
     }
 
+    function isVirtualExtrasFolder(item) {
+        return !!(item && item.Type === 'Folder' && typeof item.Id === 'string' && item.Id.indexOf('extras_') === 0);
+    }
+
     // 格式化显示名称（添加编号）
     function formatDisplayName(item) {
         var name = item.Name;
@@ -856,15 +860,15 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select', 'emby
                 }).catch(function(error) {
                     // 降级：显示原始结果
                     appendItemsToTree(view, treeContainer, items);
-                    appendLoadMoreButton(view, treeContainer, startIndex + items.length, totalRecordCount, function () {
-                        loadRootItems(view, libraryId, startIndex + items.length);
+                    appendLoadMoreButton(view, treeContainer, startIndex + itemsPageSize, totalRecordCount, function () {
+                        loadRootItems(view, libraryId, startIndex + itemsPageSize);
                     });
                 });
             } else {
                 // 正常情况：直接显示
                 appendItemsToTree(view, treeContainer, items);
-                appendLoadMoreButton(view, treeContainer, startIndex + items.length, totalRecordCount, function () {
-                    loadRootItems(view, libraryId, startIndex + items.length);
+                appendLoadMoreButton(view, treeContainer, startIndex + itemsPageSize, totalRecordCount, function () {
+                    loadRootItems(view, libraryId, startIndex + itemsPageSize);
                 });
             }
         }).catch(function (error) {
@@ -906,8 +910,8 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select', 'emby
             }
 
             appendItemsToTree(view, treeContainer, matchedItems);
-            appendLoadMoreButton(view, treeContainer, startIndex + matchedItems.length, totalRecordCount, function () {
-                searchRecursive(view, libraryId, searchText, startIndex + matchedItems.length);
+            appendLoadMoreButton(view, treeContainer, startIndex + searchPageSize, totalRecordCount, function () {
+                searchRecursive(view, libraryId, searchText, startIndex + searchPageSize);
             });
         }).catch(function (error) {
             loading.hide();
@@ -1082,11 +1086,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select', 'emby
                 });
 
                 // extras 相关文件夹强制显示箭头（子项存储在后端缓存中）
-                var isExtrasFolder = item.Name === 'Extras' || item.Name === 'Featurettes' ||
-                                     item.Name === 'Trailers' || item.Name === 'Specials' ||
-                                     item.Name === 'Behind The Scenes' || item.Name === 'Deleted Scenes' ||
-                                     item.Name === 'Interviews' || item.Name === 'Scenes' ||
-                                     item.Name === 'Samples' || item.Name === 'Clips';
+                var isExtrasFolder = isVirtualExtrasFolder(item);
 
                 if (hasChildren || isExtrasFolder) {
                     var icon = document.createElement('span');
