@@ -714,6 +714,29 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select', 'emby
         return item && typeof item.IndexNumber === 'number' ? item.IndexNumber : null;
     }
 
+    function getSortName(item) {
+        return item && (item.SortName || item.Name) ? (item.SortName || item.Name) : '';
+    }
+
+    function getYearValue(item) {
+        return item && typeof item.ProductionYear === 'number' ? item.ProductionYear : 999999;
+    }
+
+    function getDateValue(item) {
+        var value = item && item.PremiereDate;
+        var timestamp = value ? Date.parse(value) : NaN;
+
+        return isNaN(timestamp) ? 8640000000000000 : timestamp;
+    }
+
+    function isVideoMediaType(itemType) {
+        return itemType === 'Movie' ||
+            itemType === 'Episode' ||
+            itemType === 'Video' ||
+            itemType === 'Trailer' ||
+            itemType === 'MusicVideo';
+    }
+
     function parseSeasonNumber(name) {
         var normalized = normalizeSortName(name);
         var match = normalized.match(/^(?:season|series|s)\s*0*(\d+)(?:\b|$)/);
@@ -743,6 +766,13 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select', 'emby
             normalized === '特別編' ||
             normalized === '스페셜' ||
             normalized === '특별편';
+    }
+
+    function isSeasonLikeFolder(item) {
+        return !!(item &&
+            item.Type === 'Folder' &&
+            !isVirtualExtrasFolder(item) &&
+            (parseSeasonNumber(item.Name) !== null || isSpecialSeasonName(item.Name)));
     }
 
     function getSeasonSortInfo(item) {
@@ -811,16 +841,13 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select', 'emby
         return order[normalized] || 999999;
     }
 
-    function getFolderSortInfo(item) {
+    function getItemSortInfo(item) {
         if (item.Type === 'Season') {
             return getSeasonSortInfo(item);
         }
 
-        if (item.Type === 'Folder' && !isVirtualExtrasFolder(item)) {
-            var parsedSeasonNumber = parseSeasonNumber(item.Name);
-            if (parsedSeasonNumber !== null || isSpecialSeasonName(item.Name)) {
-                return getSeasonSortInfo(item);
-            }
+        if (isSeasonLikeFolder(item)) {
+            return getSeasonSortInfo(item);
         }
 
         if (isVirtualExtrasFolder(item)) {
@@ -830,22 +857,45 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select', 'emby
             };
         }
 
-        return {
-            group: 40,
-            index: 999999
-        };
-    }
-
-    function getFileSortInfo(item) {
-        if (item.Type === 'Episode') {
+        if (item.Type === 'Series') {
             return {
-                group: 10,
-                index: getIndexNumber(item) === null ? 999999 : getIndexNumber(item)
+                group: 40,
+                index: 999999
+            };
+        }
+
+        if (item.Type === 'CollectionFolder') {
+            return {
+                group: 45,
+                index: 999999
+            };
+        }
+
+        if (item.Type === 'Movie' || item.Type === 'BoxSet' || (item.Type === 'Folder' && !isVirtualExtrasFolder(item))) {
+            return {
+                group: 50,
+                index: 999999
+            };
+        }
+
+        if (isVideoMediaType(item.Type)) {
+            var indexNumber = getIndexNumber(item);
+
+            return {
+                group: 60,
+                index: indexNumber === null ? 999999 : indexNumber
+            };
+        }
+
+        if (isFolder(item.Type)) {
+            return {
+                group: 55,
+                index: 999999
             };
         }
 
         return {
-            group: 20,
+            group: 70,
             index: 999999
         };
     }
@@ -860,6 +910,32 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select', 'emby
         }
 
         return 0;
+    }
+
+    function compareItemFallbacks(a, b, aSortInfo, bSortInfo) {
+        var sortNameSort = compareNames(getSortName(a), getSortName(b));
+        if (sortNameSort !== 0) {
+            return sortNameSort;
+        }
+
+        if (aSortInfo.group === 50 && bSortInfo.group === 50) {
+            var yearSort = getYearValue(a) - getYearValue(b);
+            if (yearSort !== 0) {
+                return yearSort;
+            }
+
+            var dateSort = getDateValue(a) - getDateValue(b);
+            if (dateSort !== 0) {
+                return dateSort;
+            }
+        }
+
+        var nameSort = compareNames(a.Name, b.Name);
+        if (nameSort !== 0) {
+            return nameSort;
+        }
+
+        return compareNames(a.Id, b.Id);
     }
 
     // 格式化显示名称（添加编号）
@@ -893,33 +969,15 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select', 'emby
     // 排序函数
     function sortItems(items) {
         return items.sort(function (a, b) {
-            var aIsFolder = isFolder(a.Type);
-            var bIsFolder = isFolder(b.Type);
+            var aSortInfo = getItemSortInfo(a);
+            var bSortInfo = getItemSortInfo(b);
+            var semanticSort = compareSortInfo(aSortInfo, bSortInfo);
 
-            // 文件夹在前
-            if (aIsFolder && !bIsFolder) return -1;
-            if (!aIsFolder && bIsFolder) return 1;
-
-            // 如果都是文件夹或都是文件，按类型和序号排序
-            if (aIsFolder === bIsFolder) {
-                var semanticSort = aIsFolder
-                    ? compareSortInfo(getFolderSortInfo(a), getFolderSortInfo(b))
-                    : compareSortInfo(getFileSortInfo(a), getFileSortInfo(b));
-
-                if (semanticSort !== 0) {
-                    return semanticSort;
-                }
-
-                // 其他：按当前界面语言做自然名称排序
-                var nameSort = compareNames(a.Name, b.Name);
-                if (nameSort !== 0) {
-                    return nameSort;
-                }
-
-                return compareNames(a.Id, b.Id);
+            if (semanticSort !== 0) {
+                return semanticSort;
             }
 
-            return 0;
+            return compareItemFallbacks(a, b, aSortInfo, bSortInfo);
         });
     }
 

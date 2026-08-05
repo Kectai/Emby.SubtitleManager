@@ -17,6 +17,7 @@ using MediaBrowser.Model.Globalization;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Model.Library;
 using MediaBrowser.Model.Logging;
+using MediaBrowser.Model.Querying;
 using MediaBrowser.Model.Services;
 
 namespace Emby.SubtitleManager.Api
@@ -116,9 +117,12 @@ namespace Emby.SubtitleManager.Api
     {
         public string Id { get; set; }
         public string Name { get; set; }
+        public string SortName { get; set; }
         public string Type { get; set; }
         public string ParentId { get; set; }
         public int? IndexNumber { get; set; }
+        public int? ProductionYear { get; set; }
+        public DateTimeOffset? PremiereDate { get; set; }
         public SubtitleInfo[] Subtitles { get; set; }
     }
 
@@ -646,7 +650,11 @@ namespace Emby.SubtitleManager.Api
                     Recursive = request.Recursive,
                     StartIndex = request.StartIndex,
                     Limit = request.Limit,
-                    SearchTerm = string.IsNullOrWhiteSpace(request.SearchTerm) ? null : request.SearchTerm.Trim()
+                    SearchTerm = string.IsNullOrWhiteSpace(request.SearchTerm) ? null : request.SearchTerm.Trim(),
+                    OrderBy = new[]
+                    {
+                        (ItemSortBy.SortName, SortOrder.Ascending)
+                    }
                 };
 
                 // 如果指定了 IncludeItemTypes，使用指定的类型；否则不限制类型（显示所有项目包括文件夹）
@@ -669,25 +677,9 @@ namespace Emby.SubtitleManager.Api
 
                 var result = _libraryManager.GetItemsResult(query);
 
-                var items = result.Items.Select(i => {
-                    // 获取父级的真实 GUID，而不是内部数字 ID
-                    string parentIdStr = "";
-                    var parentItem = i.GetParent();
-                    if (parentItem != null)
-                    {
-                        parentIdStr = ToItemIdString(parentItem);
-                    }
-
-                    return new MediaItemInfo
-                    {
-                        Id = ToItemIdString(i),
-                        Name = i.Name,
-                        Type = i.GetType().Name,
-                        ParentId = parentIdStr,
-                        IndexNumber = i.IndexNumber,
-                        Subtitles = request.IncludeSubtitles ? GetSubtitleInfo(i as Video) : new SubtitleInfo[0]
-                    };
-                }).ToList();
+                var items = result.Items
+                    .Select(i => CreateMediaItemInfo(i, request.IncludeSubtitles))
+                    .ToList();
 
                 // 补充 Emby 识别到的附加媒体虚拟文件夹。
                 if (requestedParentItem != null && ShouldSupplementExtras(requestedParentItem))
@@ -726,6 +718,33 @@ namespace Emby.SubtitleManager.Api
             {
                 Items = new MediaItemInfo[0],
                 TotalRecordCount = 0
+            };
+        }
+
+        private MediaItemInfo CreateMediaItemInfo(BaseItem item, bool includeSubtitles, string parentIdOverride = null)
+        {
+            string parentIdStr = parentIdOverride;
+            if (parentIdStr == null)
+            {
+                parentIdStr = "";
+                var parentItem = item.GetParent();
+                if (parentItem != null)
+                {
+                    parentIdStr = ToItemIdString(parentItem);
+                }
+            }
+
+            return new MediaItemInfo
+            {
+                Id = ToItemIdString(item),
+                Name = item.Name,
+                SortName = string.IsNullOrWhiteSpace(item.SortName) ? item.Name : item.SortName,
+                Type = item.GetType().Name,
+                ParentId = parentIdStr,
+                IndexNumber = item.IndexNumber,
+                ProductionYear = item.ProductionYear,
+                PremiereDate = item.PremiereDate,
+                Subtitles = includeSubtitles ? GetSubtitleInfo(item as Video) : new SubtitleInfo[0]
             };
         }
 
@@ -910,9 +929,12 @@ namespace Emby.SubtitleManager.Api
                         {
                             Id = folderId,
                             Name = folderName,
+                            SortName = folderName,
                             Type = "Folder",
                             ParentId = parentIdStr,
                             IndexNumber = null,
+                            ProductionYear = null,
+                            PremiereDate = null,
                             Subtitles = new SubtitleInfo[0]
                         });
                     }
@@ -957,9 +979,14 @@ namespace Emby.SubtitleManager.Api
                     };
                 }
 
+                var sortedVideos = videos
+                    .OrderBy(v => string.IsNullOrWhiteSpace(v.SortName) ? v.Name : v.SortName, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(v => v.ProductionYear ?? int.MaxValue)
+                    .ThenBy(v => v.Name, StringComparer.OrdinalIgnoreCase);
+
                 var totalRecordCount = videos.Count;
                 var start = Math.Max(0, startIndex.GetValueOrDefault());
-                var queryVideos = videos.Skip(start);
+                var queryVideos = sortedVideos.Skip(start);
                 if (limit.HasValue && limit.Value >= 0)
                 {
                     queryVideos = queryVideos.Take(limit.Value);
@@ -968,15 +995,7 @@ namespace Emby.SubtitleManager.Api
                 // 转换为 MediaItemInfo（使用真实的 Emby ItemId）
                 foreach (var video in queryVideos)
                 {
-                    items.Add(new MediaItemInfo
-                    {
-                        Id = video.Id.ToString().Replace("-", ""),
-                        Name = video.Name,
-                        Type = video.GetType().Name,
-                        ParentId = parentId,
-                        IndexNumber = null,
-                        Subtitles = new SubtitleInfo[0]
-                    });
+                    items.Add(CreateMediaItemInfo(video, false, parentId));
                 }
 
                 return new ItemsResponse
