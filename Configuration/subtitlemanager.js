@@ -1192,8 +1192,10 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select', 'emby
 
             // 判断是否需要从后端加载
             // 1. 没有找到子项
-            // 2. 或者当前是 Folder 类型（电影文件夹，需要获取 extras）
-            var needBackendLoad = (children.length === 0) || (currentFolder && currentFolder.Type === 'Folder');
+            // 2. 当前层级可能存在 Emby 附加媒体，需要补充虚拟 extras 文件夹
+            var canHaveVirtualExtras = currentFolder &&
+                (currentFolder.Type === 'Folder' || currentFolder.Type === 'Series' || currentFolder.Type === 'Season');
+            var needBackendLoad = (children.length === 0) || canHaveVirtualExtras;
 
             if (needBackendLoad) {
                 loading.show();
